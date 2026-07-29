@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import type { RouteData, PriceTier, ThemeMode } from '../types';
 import type { OrderAssignmentMode } from '../types/order';
 import { formatCurrency } from '../services/pricingService';
@@ -74,10 +75,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     handleClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+  return createPortal(
+    <div className="fixed inset-0 z-[1100] flex items-start justify-center overflow-y-auto bg-black/80 p-4 pt-20 backdrop-blur-md sm:items-center sm:py-8">
       <div
-        className={`w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl transition-colors ${
+        className={`my-auto w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl transition-colors ${
           isDark ? 'border-zinc-800 bg-zinc-950 text-white' : 'border-slate-200 bg-white text-slate-900'
         }`}
       >
@@ -312,6 +313,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

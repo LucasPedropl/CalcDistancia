@@ -4,6 +4,7 @@ import L from 'leaflet';
 import type { ThemeMode } from '../../../types';
 import type { LocationPoint } from '../../../types';
 import type { MotoboyWithDistance } from '../../../services/motoboyService';
+import { MapRightClickHandler } from '../../../components/map/MapRightClickHandler';
 
 delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -21,6 +22,8 @@ interface ClienteHomeMapProps {
   motoboys: MotoboyWithDistance[];
   selectedMotoboyId: string | null;
   onMotoboySelect: (motoboyId: string) => void;
+  onMapContextMenu?: (lat: number, lng: number, clientX: number, clientY: number) => void;
+  destination?: LocationPoint | null;
   theme?: ThemeMode;
 }
 
@@ -29,6 +32,8 @@ export function ClienteHomeMap({
   motoboys,
   selectedMotoboyId,
   onMotoboySelect,
+  onMapContextMenu,
+  destination = null,
   theme = 'light',
 }: ClienteHomeMapProps) {
   const isDark = theme === 'dark';
@@ -49,6 +54,17 @@ export function ClienteHomeMap({
     iconAnchor: [9, 9],
   });
 
+  const destIcon = L.divIcon({
+    className: 'custom-dest-marker',
+    html: `<div style="width: 18px; height: 18px; background-color: ${
+      isDark ? '#ffffff' : '#0f172a'
+    }; border: 2px solid ${isDark ? '#000000' : '#ffffff'}; box-shadow: 0 0 0 6px ${
+      isDark ? 'rgba(255,255,255,0.25)' : 'rgba(15,23,42,0.2)'
+    };"></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  });
+
   return (
     <div className={`h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
       <MapContainer
@@ -64,12 +80,24 @@ export function ClienteHomeMap({
           maxZoom={19}
         />
 
+        {onMapContextMenu && <MapRightClickHandler onContextMenu={onMapContextMenu} />}
+
         {origin && (
           <Marker position={[origin.lat, origin.lng]} icon={originIcon}>
             <Popup>
               <strong>Sua origem</strong>
               <br />
               {origin.address}
+            </Popup>
+          </Marker>
+        )}
+
+        {destination && (
+          <Marker position={[destination.lat, destination.lng]} icon={destIcon}>
+            <Popup>
+              <strong>Destino</strong>
+              <br />
+              {destination.address}
             </Popup>
           </Marker>
         )}

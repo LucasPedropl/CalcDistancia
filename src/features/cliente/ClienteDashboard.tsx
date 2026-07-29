@@ -6,7 +6,7 @@ import type {
   ThemeMode,
 } from '../../types';
 import type { OrderAssignmentMode } from '../../types/order';
-import { fetchRealRoadRoute } from '../../services/geocodingService';
+import { fetchRealRoadRoute, reverseGeocode, type ReverseGeocodeResult } from '../../services/geocodingService';
 import { loadSavedPriceTiers, savePriceTiers } from '../../services/pricingService';
 import { createOrder, cancelOrder } from '../../services/orderService';
 import { getMotoboysNearLocation, DEFAULT_REFERENCE_LOCATION } from '../../services/motoboyService';
@@ -29,6 +29,8 @@ import { Screen2MainView } from '../../components/Screen2MainView';
 import { HeaderNav } from '../../components/HeaderNav';
 import { RouteMap } from '../../components/RouteMap';
 import { OrderModal } from '../../components/OrderModal';
+import { MapDestinationContextMenu } from '../../components/MapDestinationContextMenu';
+import { DestinationAddressModal } from '../../components/DestinationAddressModal';
 import { OrderChatWidget } from '../../components/chat/OrderChatWidget';
 import { CheckCircle } from 'lucide-react';
 
@@ -80,6 +82,15 @@ export function ClienteDashboard() {
   const acceptedToastShownRef = useRef<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  const [mapContextMenu, setMapContextMenu] = useState<{
+    lat: number;
+    lng: number;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [destinationGeocodeBase, setDestinationGeocodeBase] = useState<ReverseGeocodeResult | null>(null);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -325,6 +336,30 @@ export function ClienteDashboard() {
     }, 4000);
   };
 
+  const handleMapContextMenu = (lat: number, lng: number, clientX: number, clientY: number) => {
+    setMapContextMenu({ lat, lng, x: clientX, y: clientY });
+  };
+
+  const handleConfirmMapDestinationPick = async () => {
+    if (!mapContextMenu) return;
+    setIsReverseGeocoding(true);
+    try {
+      const base = await reverseGeocode(mapContextMenu.lat, mapContextMenu.lng);
+      setDestinationGeocodeBase(base);
+      setMapContextMenu(null);
+    } catch {
+      showToast('Não foi possível identificar o endereço. Tente outro ponto no mapa.', 'info');
+      setMapContextMenu(null);
+    } finally {
+      setIsReverseGeocoding(false);
+    }
+  };
+
+  const handleDestinationFromMapConfirmed = (loc: LocationPoint) => {
+    setDestination(loc);
+    showToast('Destino definido no mapa!', 'success');
+  };
+
   const isDark = theme === 'dark';
   const isAdmin = user?.role === 'ADMIN';
 
@@ -451,6 +486,8 @@ export function ClienteDashboard() {
                   motoboys={homeMotoboys}
                   selectedMotoboyId={selectedMotoboyId}
                   onMotoboySelect={setSelectedMotoboyId}
+                  onMapContextMenu={handleMapContextMenu}
+                  destination={destination}
                   theme={theme}
                 />
               )}
@@ -480,8 +517,28 @@ export function ClienteDashboard() {
           pendingOrder={clientActiveOrder}
           onNewOrder={handleBackToHome}
           onCancelOrder={clientActiveOrder ? handleCancelActiveOrder : undefined}
+          onMapContextMenu={handleMapContextMenu}
         />
       )}
+
+      {mapContextMenu && (
+        <MapDestinationContextMenu
+          x={mapContextMenu.x}
+          y={mapContextMenu.y}
+          isLoading={isReverseGeocoding}
+          theme={theme}
+          onConfirm={handleConfirmMapDestinationPick}
+          onDismiss={() => !isReverseGeocoding && setMapContextMenu(null)}
+        />
+      )}
+
+      <DestinationAddressModal
+        isOpen={destinationGeocodeBase !== null}
+        base={destinationGeocodeBase}
+        theme={theme}
+        onClose={() => setDestinationGeocodeBase(null)}
+        onConfirm={handleDestinationFromMapConfirmed}
+      />
 
       <OrderModal
         isOpen={isOrderModalOpen}

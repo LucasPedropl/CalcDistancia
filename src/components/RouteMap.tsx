@@ -10,6 +10,7 @@ interface RouteMapProps {
   availableMotoboys?: AvailableMotoboy[];
   selectedMotoboyId?: string | null;
   onMotoboySelect?: (motoboyId: string) => void;
+  onMapContextMenu?: (lat: number, lng: number, clientX: number, clientY: number) => void;
 }
 
 export const RouteMap: React.FC<RouteMapProps> = ({
@@ -18,15 +19,21 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   availableMotoboys = [],
   selectedMotoboyId = null,
   onMotoboySelect,
+  onMapContextMenu,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const onMotoboySelectRef = useRef(onMotoboySelect);
+  const onMapContextMenuRef = useRef(onMapContextMenu);
 
   useEffect(() => {
     onMotoboySelectRef.current = onMotoboySelect;
   }, [onMotoboySelect]);
+
+  useEffect(() => {
+    onMapContextMenuRef.current = onMapContextMenu;
+  }, [onMapContextMenu]);
 
   const isDark = theme === 'dark';
 
@@ -150,6 +157,22 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       map.invalidateSize();
     });
   }, [routeData, isDark, availableMotoboys, selectedMotoboyId]);
+
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map || !onMapContextMenu) return;
+
+    const handleContextMenu = (event: L.LeafletMouseEvent) => {
+      event.originalEvent.preventDefault();
+      const { clientX, clientY } = event.originalEvent;
+      onMapContextMenuRef.current?.(event.latlng.lat, event.latlng.lng, clientX, clientY);
+    };
+
+    map.on('contextmenu', handleContextMenu);
+    return () => {
+      map.off('contextmenu', handleContextMenu);
+    };
+  }, [onMapContextMenu, routeData]);
 
   useEffect(() => {
     return () => {

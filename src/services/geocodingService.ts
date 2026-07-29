@@ -243,6 +243,86 @@ export async function fetchRealRoadRoute(
 /**
  * Sync wrapper for fast initialization, or uses fetchRealRoadRoute for real driving path.
  */
+export interface ReverseGeocodeResult {
+  street: string;
+  district: string;
+  city: string;
+  state: string;
+  cep: string;
+  displayName: string;
+  lat: number;
+  lng: number;
+}
+
+/** Reverse geocode lat/lng via Nominatim (map right-click destination pick). */
+export async function reverseGeocode(lat: number, lng: number): Promise<ReverseGeocodeResult> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}`,
+      { headers: { 'Accept-Language': 'pt-BR' } },
+    );
+    if (response.ok) {
+      const data = (await response.json()) as {
+        display_name?: string;
+        address?: Record<string, string>;
+      };
+      const addr = data.address ?? {};
+      const street =
+        addr.road ??
+        addr.pedestrian ??
+        addr.footway ??
+        addr.residential ??
+        data.display_name?.split(',')[0] ??
+        'Local selecionado';
+
+      return {
+        street,
+        district: addr.suburb ?? addr.neighbourhood ?? addr.quarter ?? '',
+        city: addr.city ?? addr.town ?? addr.municipality ?? '',
+        state: addr.state ?? '',
+        cep: addr.postcode ?? '',
+        displayName: data.display_name ?? street,
+        lat,
+        lng,
+      };
+    }
+  } catch (error) {
+    console.warn('Reverse geocode failed', error);
+  }
+
+  return {
+    street: 'Local selecionado no mapa',
+    district: '',
+    city: '',
+    state: '',
+    cep: '',
+    displayName: `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+    lat,
+    lng,
+  };
+}
+
+export function buildDestinationAddress(
+  base: ReverseGeocodeResult,
+  number: string,
+  complement: string,
+): LocationPoint {
+  const numberPart = number.trim() ? `, ${number.trim()}` : '';
+  const complementPart = complement.trim() ? ` - ${complement.trim()}` : '';
+  const locationTail = [base.district, base.city, base.state].filter(Boolean).join(', ');
+  const address = `${base.street}${numberPart}${complementPart}${locationTail ? `, ${locationTail}` : ''}`;
+
+  return {
+    address,
+    lat: base.lat,
+    lng: base.lng,
+    city: base.city || undefined,
+    state: base.state || undefined,
+    district: base.district || undefined,
+    cep: base.cep || undefined,
+  };
+}
+
 export function buildRouteData(origin: LocationPoint, destination: LocationPoint): RouteData {
   const { distanceKm, durationMin } = calculateHaversineDistance(
     origin.lat,

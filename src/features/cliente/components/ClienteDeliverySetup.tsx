@@ -176,6 +176,10 @@ export function ClienteDeliverySetup({
 
         />
 
+        <p className={`text-[11px] leading-relaxed ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
+          Ou clique com o <strong>botão direito</strong> no mapa para escolher o destino.
+        </p>
+
       </div>
 
 

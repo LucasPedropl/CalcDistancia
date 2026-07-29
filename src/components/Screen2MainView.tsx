@@ -27,6 +27,7 @@ interface Screen2MainViewProps {
   pendingOrder: DeliveryOrder | null;
   onNewOrder: () => void;
   onCancelOrder?: () => void;
+  onMapContextMenu?: (lat: number, lng: number, clientX: number, clientY: number) => void;
 }
 
 export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
@@ -49,6 +50,7 @@ export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
   pendingOrder,
   onNewOrder,
   onCancelOrder,
+  onMapContextMenu,
 }) => {
   const isDark = theme === 'dark';
 
@@ -97,6 +99,7 @@ export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
             availableMotoboys={availableMotoboys}
             selectedMotoboyId={selectedMotoboyId}
             onMotoboySelect={(id) => onSelectMotoboy(id)}
+            onMapContextMenu={onMapContextMenu}
           />
         </main>
       </div>
