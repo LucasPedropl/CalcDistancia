@@ -54,7 +54,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
 
   return (
     <aside
-      className={`flex h-full w-full shrink-0 flex-col overflow-y-auto border-r lg:w-112 ${
+      className={`flex h-full min-h-0 w-full flex-col overflow-y-auto border-r lg:max-w-none ${
         isDark ? 'border-zinc-800 bg-black text-white' : 'border-slate-200 bg-slate-50 text-slate-900'
       }`}
     >

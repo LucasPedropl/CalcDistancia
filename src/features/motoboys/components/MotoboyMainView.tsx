@@ -4,6 +4,8 @@ import { MotoboyOrdersSidebar } from './MotoboyOrdersSidebar';
 import { MotoboyMap } from './MotoboyMap';
 import { RouteMap } from '../../../components/RouteMap';
 import { MotoboyNotificationsBell } from './MotoboyNotificationsBell';
+import { AppViewport } from '../../../components/layout/AppViewport';
+import { ResponsiveMapShell } from '../../../components/layout/ResponsiveMapShell';
 import { Route, LogOut, Moon, Settings, Sun } from 'lucide-react';
 
 interface MotoboyMainViewProps {
@@ -47,35 +49,31 @@ export function MotoboyMainView({
   const isBusy = activeOrder !== null;
 
   return (
-    <div
-      className={`flex h-screen w-screen flex-col overflow-hidden font-sans transition-colors ${
-        isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
-      }`}
-    >
+    <AppViewport theme={theme}>
       <header
-        className={`relative z-40 flex w-full items-center justify-between border-b px-6 py-4 transition-colors ${
+        className={`relative z-40 flex w-full shrink-0 items-center justify-between border-b px-4 py-3 transition-colors sm:px-6 sm:py-4 ${
           isDark ? 'border-zinc-800 bg-black text-white' : 'border-slate-200 bg-white text-slate-900 shadow-sm'
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <div
-            className={`flex h-9 w-9 items-center justify-center rounded-lg font-black tracking-tighter ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-black tracking-tighter ${
               isDark ? 'bg-white text-black' : 'bg-slate-900 text-white'
             }`}
           >
             <Route className="h-5 w-5" />
           </div>
-          <div>
-            <h1 className="text-base font-bold tracking-tight sm:text-lg">UaiPDV Entregador</h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">UaiPDV Entregador</h1>
             {userName && (
-              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+              <p className={`truncate text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
                 {isBusy ? `Em corrida · ${activeOrder.id}` : `Olá, ${userName}`}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <MotoboyNotificationsBell motoboyId={motoboyId} />
           <button
             type="button"
@@ -116,27 +114,15 @@ export function MotoboyMainView({
         </div>
       </header>
 
-      <div className="relative z-0 flex flex-1 flex-col overflow-hidden lg:flex-row">
-        <MotoboyOrdersSidebar
-          openOrders={openOrders}
-          activeOrder={activeOrder}
-          previewOrderId={previewOrderId}
-          onPreviewOrder={onPreviewOrder}
-          onConfirmAccept={onConfirmAccept}
-          onCancelPreview={onCancelPreview}
-          onCancelActiveOrder={onCancelActiveOrder}
-          onCompleteActiveOrder={onCompleteActiveOrder}
-          theme={theme}
-        />
-
-        <main
-          className={`relative z-0 h-full flex-1 border-t lg:border-t-0 lg:border-l ${
-            isDark ? 'border-zinc-800' : 'border-slate-200'
-          }`}
-        >
-          {isLoadingRoute ? (
+      <ResponsiveMapShell
+        theme={theme}
+        mapLabel="Mapa"
+        panelLabel="Pedidos"
+        defaultMobileView={openOrders.length > 0 && !mapRoute ? 'panel' : 'map'}
+        map={
+          isLoadingRoute ? (
             <div
-              className={`flex h-full items-center justify-center ${
+              className={`flex h-full min-h-[240px] items-center justify-center ${
                 isDark ? 'bg-zinc-950 text-zinc-400' : 'bg-slate-100 text-slate-500'
               }`}
             >
@@ -146,9 +132,22 @@ export function MotoboyMainView({
             <RouteMap routeData={mapRoute} theme={theme} />
           ) : (
             <MotoboyMap orders={openOrders} theme={theme} />
-          )}
-        </main>
-      </div>
-    </div>
+          )
+        }
+        panel={
+          <MotoboyOrdersSidebar
+            openOrders={openOrders}
+            activeOrder={activeOrder}
+            previewOrderId={previewOrderId}
+            onPreviewOrder={onPreviewOrder}
+            onConfirmAccept={onConfirmAccept}
+            onCancelPreview={onCancelPreview}
+            onCancelActiveOrder={onCancelActiveOrder}
+            onCompleteActiveOrder={onCompleteActiveOrder}
+            theme={theme}
+          />
+        }
+      />
+    </AppViewport>
   );
 }

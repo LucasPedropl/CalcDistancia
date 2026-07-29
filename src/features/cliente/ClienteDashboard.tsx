@@ -27,6 +27,8 @@ import { ClienteHomeMap } from './components/ClienteHomeMap';
 import { ClienteSettingsView, type SettingsSection } from './components/ClienteSettingsView';
 import { Screen2MainView } from '../../components/Screen2MainView';
 import { HeaderNav } from '../../components/HeaderNav';
+import { AppViewport } from '../../components/layout/AppViewport';
+import { ResponsiveMapShell } from '../../components/layout/ResponsiveMapShell';
 import { RouteMap } from '../../components/RouteMap';
 import { OrderModal } from '../../components/OrderModal';
 import { MapDestinationContextMenu } from '../../components/MapDestinationContextMenu';
@@ -376,11 +378,7 @@ export function ClienteDashboard() {
   const showDeliveryResult = viewMode === 'DELIVERY' && routeData !== null;
 
   return (
-    <div
-      className={`min-h-screen font-sans selection:bg-slate-900 selection:text-white transition-colors ${
-        isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
-      }`}
-    >
+    <>
       {viewMode === 'HOME' && user && (
         <ClienteMainView
           origin={origin}
@@ -432,11 +430,7 @@ export function ClienteDashboard() {
       )}
 
       {viewMode === 'DELIVERY' && !showDeliveryResult && (
-        <div
-          className={`flex h-screen w-screen flex-col overflow-hidden font-sans transition-colors ${
-            isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
-          }`}
-        >
+        <AppViewport theme={theme}>
           <HeaderNav
             onOpenSettings={() => handleOpenSettings('profile')}
             theme={theme}
@@ -447,38 +441,20 @@ export function ClienteDashboard() {
             onlineMotoboyCount={homeMotoboys.length}
             motoboyRegionLabel={origin ? 'na sua região' : 'em Belo Horizonte (demo)'}
           />
-          <div className="relative z-0 flex flex-1 flex-col overflow-hidden lg:flex-row">
-            <ClienteDeliverySetup
-              origin={origin}
-              userId={user?.id ?? ''}
-              onUpdateOrigin={handleUpdateOrigin}
-              onOpenSettings={() => handleOpenSettings('addresses')}
-              destination={destination}
-              onUpdateDestination={setDestination}
-              onCalculateRoute={handleCalculateRoute}
-              onBack={handleBackToHome}
-              isRouteLoading={isRouteLoading}
-              canCalculate={Boolean(origin && destination && routeData && !isRouteLoading)}
-              motoboys={homeMotoboys}
-              selectedMotoboyId={selectedMotoboyId}
-              onSelectMotoboy={setSelectedMotoboyId}
-              favoriteMotoboyIds={favoriteMotoboyIds}
-              onToggleFavorite={handleToggleFavoriteMotoboy}
-              deliveryDistanceKm={routeData?.distanceKm ?? null}
-              theme={theme}
-            />
-            <main
-              className={`relative z-0 h-full flex-1 border-t lg:border-t-0 lg:border-l ${
-                isDark ? 'border-zinc-800' : 'border-slate-200'
-              }`}
-            >
-              {routeData ? (
+          <ResponsiveMapShell
+            theme={theme}
+            mapLabel="Mapa"
+            panelLabel="Entrega"
+            defaultMobileView={destination ? 'panel' : 'map'}
+            map={
+              routeData ? (
                 <RouteMap
                   routeData={routeData}
                   theme={theme}
                   availableMotoboys={homeMotoboys}
                   selectedMotoboyId={selectedMotoboyId}
                   onMotoboySelect={setSelectedMotoboyId}
+                  onMapContextMenu={handleMapContextMenu}
                 />
               ) : (
                 <ClienteHomeMap
@@ -490,10 +466,31 @@ export function ClienteDashboard() {
                   destination={destination}
                   theme={theme}
                 />
-              )}
-            </main>
-          </div>
-        </div>
+              )
+            }
+            panel={
+              <ClienteDeliverySetup
+                origin={origin}
+                userId={user?.id ?? ''}
+                onUpdateOrigin={handleUpdateOrigin}
+                onOpenSettings={() => handleOpenSettings('addresses')}
+                destination={destination}
+                onUpdateDestination={setDestination}
+                onCalculateRoute={handleCalculateRoute}
+                onBack={handleBackToHome}
+                isRouteLoading={isRouteLoading}
+                canCalculate={Boolean(origin && destination && routeData && !isRouteLoading)}
+                motoboys={homeMotoboys}
+                selectedMotoboyId={selectedMotoboyId}
+                onSelectMotoboy={setSelectedMotoboyId}
+                favoriteMotoboyIds={favoriteMotoboyIds}
+                onToggleFavorite={handleToggleFavoriteMotoboy}
+                deliveryDistanceKm={routeData?.distanceKm ?? null}
+                theme={theme}
+              />
+            }
+          />
+        </AppViewport>
       )}
 
       {showDeliveryResult && routeData && user && (
@@ -554,7 +551,7 @@ export function ClienteDashboard() {
 
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border px-4 py-3 shadow-2xl ${
+          className={`fixed bottom-6 right-6 z-[1100] flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-xl border px-4 py-3 shadow-2xl sm:bottom-6 sm:right-6 ${
             isDark
               ? 'border-zinc-700 bg-zinc-900 text-white'
               : 'border-slate-300 bg-white text-slate-900 shadow-slate-300/50'
@@ -575,6 +572,6 @@ export function ClienteDashboard() {
           theme={theme}
         />
       )}
-    </div>
+    </>
   );
 }

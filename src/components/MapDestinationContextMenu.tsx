@@ -20,6 +20,11 @@ export function MapDestinationContextMenu({
 }: MapDestinationContextMenuProps) {
   const isDark = theme === 'dark';
 
+  const menuWidth = 220;
+  const menuHeight = 52;
+  const clampedX = Math.min(Math.max(8, x), window.innerWidth - menuWidth - 8);
+  const clampedY = Math.min(Math.max(8, y), window.innerHeight - menuHeight - 8);
+
   return (
     <>
       <button
@@ -36,7 +41,7 @@ export function MapDestinationContextMenu({
         className={`fixed z-[1095] min-w-[220px] overflow-hidden rounded-xl border shadow-2xl ${
           isDark ? 'border-zinc-700 bg-zinc-900 text-white' : 'border-slate-200 bg-white text-slate-900'
         }`}
-        style={{ left: x, top: y }}
+        style={{ left: clampedX, top: clampedY }}
         role="menu"
       >
         <button

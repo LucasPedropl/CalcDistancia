@@ -6,6 +6,8 @@ import type { SavedAddress } from '../services/addressService';
 import { SidebarMenu } from './SidebarMenu';
 import { RouteMap } from './RouteMap';
 import { HeaderNav } from './HeaderNav';
+import { AppViewport } from './layout/AppViewport';
+import { ResponsiveMapShell } from './layout/ResponsiveMapShell';
 
 interface Screen2MainViewProps {
   routeData: RouteData;
@@ -52,14 +54,8 @@ export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
   onCancelOrder,
   onMapContextMenu,
 }) => {
-  const isDark = theme === 'dark';
-
   return (
-    <div
-      className={`flex h-screen w-screen flex-col overflow-hidden font-sans transition-colors ${
-        isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
-      }`}
-    >
+    <AppViewport theme={theme}>
       <HeaderNav
         onOpenSettings={onOpenSettings}
         theme={theme}
@@ -69,30 +65,11 @@ export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
         userEmail={userEmail}
       />
 
-      <div className="relative flex flex-1 flex-col overflow-hidden lg:flex-row">
-        <SidebarMenu
-          routeData={routeData}
-          origin={origin}
-          userId={userId}
-          onUpdateOrigin={onUpdateOrigin}
-          onUpdateDestination={onUpdateDestination}
-          onOpenSettings={onOpenSettings}
-          onConfirmPedido={onConfirmPedido}
-          priceTiers={priceTiers}
-          theme={theme}
-          availableMotoboys={availableMotoboys}
-          selectedMotoboyId={selectedMotoboyId}
-          onSelectMotoboy={onSelectMotoboy}
-          pendingOrder={pendingOrder}
-          onNewOrder={onNewOrder}
-          onCancelOrder={onCancelOrder}
-        />
-
-        <main
-          className={`relative h-full flex-1 border-t lg:border-t-0 lg:border-l ${
-            isDark ? 'border-zinc-800' : 'border-slate-200'
-          }`}
-        >
+      <ResponsiveMapShell
+        theme={theme}
+        mapLabel="Mapa"
+        panelLabel="Pedido"
+        map={
           <RouteMap
             routeData={routeData}
             theme={theme}
@@ -101,8 +78,27 @@ export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
             onMotoboySelect={(id) => onSelectMotoboy(id)}
             onMapContextMenu={onMapContextMenu}
           />
-        </main>
-      </div>
-    </div>
+        }
+        panel={
+          <SidebarMenu
+            routeData={routeData}
+            origin={origin}
+            userId={userId}
+            onUpdateOrigin={onUpdateOrigin}
+            onUpdateDestination={onUpdateDestination}
+            onOpenSettings={onOpenSettings}
+            onConfirmPedido={onConfirmPedido}
+            priceTiers={priceTiers}
+            theme={theme}
+            availableMotoboys={availableMotoboys}
+            selectedMotoboyId={selectedMotoboyId}
+            onSelectMotoboy={onSelectMotoboy}
+            pendingOrder={pendingOrder}
+            onNewOrder={onNewOrder}
+            onCancelOrder={onCancelOrder}
+          />
+        }
+      />
+    </AppViewport>
   );
 };

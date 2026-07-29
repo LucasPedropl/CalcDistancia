@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { PriceTier, ThemeMode } from '../../../types';
 import type { SavedAddress } from '../../../services/addressService';
 import { HeaderNav } from '../../../components/HeaderNav';
+import { AppViewport } from '../../../components/layout/AppViewport';
 import { UserSettingsPanel } from './UserSettingsPanel';
 import { AddressSettingsPanel } from './AddressSettingsPanel';
 import { PriceConfigModal } from '../../../components/PriceConfigModal';
@@ -48,15 +49,11 @@ export function ClienteSettingsView({
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
 
   const navSections = canEditPriceTable
-    ? [...SECTIONS, { id: 'pricing' as const, label: 'Tabela de Preços', icon: DollarSign }]
+    ? [...SECTIONS, { id: 'pricing' as const, label: 'Preços', icon: DollarSign }]
     : SECTIONS;
 
   return (
-    <div
-      className={`flex h-screen w-screen flex-col overflow-hidden font-sans transition-colors ${
-        isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
-      }`}
-    >
+    <AppViewport theme={theme}>
       <HeaderNav
         theme={theme}
         onToggleTheme={onToggleTheme}
@@ -65,9 +62,9 @@ export function ClienteSettingsView({
         userEmail={userEmail}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <aside
-          className={`flex w-full shrink-0 flex-col border-r lg:w-64 ${
+          className={`flex w-full shrink-0 flex-col border-b lg:w-64 lg:border-b-0 lg:border-r ${
             isDark ? 'border-zinc-800 bg-zinc-950' : 'border-slate-200 bg-white'
           }`}
         >
@@ -84,11 +81,11 @@ export function ClienteSettingsView({
             </button>
             <div className="flex items-center gap-2">
               <Settings className={`h-5 w-5 ${isDark ? 'text-white' : 'text-slate-900'}`} />
-              <h1 className="text-lg font-bold">Configurações</h1>
+              <h1 className="text-base font-bold sm:text-lg">Configurações</h1>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 p-3">
+          <nav className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:space-y-1 lg:p-3">
             {navSections.map(({ id, label, icon: Icon }) => {
               const isActive = activeSection === id;
               return (
@@ -102,7 +99,7 @@ export function ClienteSettingsView({
                     }
                     setActiveSection(id);
                   }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                  className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors sm:gap-3 sm:px-4 sm:py-3 lg:w-full ${
                     isActive
                       ? isDark
                         ? 'bg-white text-black'
@@ -120,8 +117,8 @@ export function ClienteSettingsView({
           </nav>
         </aside>
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-2xl p-6 sm:p-8">
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-2xl p-4 sm:p-6 lg:p-8">
             {activeSection === 'profile' && <UserSettingsPanel theme={theme} />}
             {activeSection === 'addresses' && (
               <AddressSettingsPanel
@@ -165,6 +162,6 @@ export function ClienteSettingsView({
           allowPerKmTier
         />
       )}
-    </div>
+    </AppViewport>
   );
 }

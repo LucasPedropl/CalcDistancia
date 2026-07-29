@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PriceTier, ThemeMode } from '../../../types';
 import { HeaderNav } from '../../../components/HeaderNav';
+import { AppViewport } from '../../../components/layout/AppViewport';
 import { MotoboyForm } from '../components/MotoboyForm';
 import { PriceConfigModal } from '../../../components/PriceConfigModal';
 import {
@@ -23,7 +24,7 @@ interface MotoboySettingsViewProps {
 
 const SECTIONS: { id: MotoboySettingsSection; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Perfil', icon: User },
-  { id: 'pricing', label: 'Tabela de Preços', icon: DollarSign },
+  { id: 'pricing', label: 'Preços', icon: DollarSign },
 ];
 
 export function MotoboySettingsView({
@@ -46,21 +47,12 @@ export function MotoboySettingsView({
   };
 
   return (
-    <div
-      className={`flex h-screen w-screen flex-col overflow-hidden font-sans transition-colors ${
-        isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
-      }`}
-    >
-      <HeaderNav
-        theme={theme}
-        onToggleTheme={onToggleTheme}
-        onLogout={onLogout}
-        userName={userName}
-      />
+    <AppViewport theme={theme}>
+      <HeaderNav theme={theme} onToggleTheme={onToggleTheme} onLogout={onLogout} userName={userName} />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <aside
-          className={`flex w-full shrink-0 flex-col border-r lg:w-64 ${
+          className={`flex w-full shrink-0 flex-col border-b lg:w-64 lg:border-b-0 lg:border-r ${
             isDark ? 'border-zinc-800 bg-zinc-950' : 'border-slate-200 bg-white'
           }`}
         >
@@ -77,11 +69,11 @@ export function MotoboySettingsView({
             </button>
             <div className="flex items-center gap-2">
               <Settings className={`h-5 w-5 ${isDark ? 'text-white' : 'text-slate-900'}`} />
-              <h1 className="text-lg font-bold">Configurações</h1>
+              <h1 className="text-base font-bold sm:text-lg">Configurações</h1>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-1 p-3">
+          <nav className="flex gap-1 overflow-x-auto p-2 lg:flex-col lg:space-y-1 lg:p-3">
             {SECTIONS.map(({ id, label, icon: Icon }) => {
               const isActive = activeSection === id;
               return (
@@ -96,7 +88,7 @@ export function MotoboySettingsView({
                     }
                     setActiveSection(id);
                   }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                  className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors sm:gap-3 sm:px-4 sm:py-3 lg:w-full ${
                     isActive
                       ? isDark
                         ? 'bg-white text-black'
@@ -114,8 +106,8 @@ export function MotoboySettingsView({
           </nav>
         </aside>
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-2xl p-6 sm:p-8">
+        <main className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-2xl p-4 sm:p-6 lg:p-8">
             {activeSection === 'profile' && <MotoboyForm theme={theme} />}
             {activeSection === 'pricing' && (
               <div className="space-y-4">
@@ -151,6 +143,6 @@ export function MotoboySettingsView({
         theme={theme}
         allowPerKmTier
       />
-    </div>
+    </AppViewport>
   );
 }

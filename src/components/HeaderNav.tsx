@@ -60,19 +60,19 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 
   return (
     <header
-      className={`relative z-[1000] flex w-full items-center justify-between border-b px-6 py-4 transition-colors ${
+      className={`relative z-[1000] flex w-full shrink-0 items-center justify-between border-b px-4 py-3 transition-colors sm:px-6 sm:py-4 ${
         isDark ? 'border-zinc-800 bg-black text-white' : 'border-slate-200 bg-white text-slate-900 shadow-sm'
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <div
-          className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg font-black tracking-tighter ${
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg font-black tracking-tighter ${
             isDark ? 'bg-white text-black' : 'bg-slate-900 text-white'
           }`}
         >
           <Route className="h-5 w-5" />
         </div>
-        <h1 className="text-base font-bold tracking-tight sm:text-lg">UaiPDV Rota</h1>
+        <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">UaiPDV Rota</h1>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
