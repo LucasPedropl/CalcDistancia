@@ -14,7 +14,9 @@ export interface PriceTier {
   id: string;
   minKm: number;
   maxKm: number | null; // null means "> X km"
-  price: number | null; // null means "Sob Consulta"
+  price: number | null; // null means "Sob Consulta" (fixed price for the tier)
+  /** When set on an open-ended tier, charges per km above minKm. */
+  pricePerKm?: number | null;
   label: string;
 }
 

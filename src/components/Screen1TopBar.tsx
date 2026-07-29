@@ -14,8 +14,7 @@ interface Screen1TopBarProps {
   isRouteLoading?: boolean;
   canCalculateRoute?: boolean;
   onOpenPriceConfig?: () => void;
-  useGoogleMaps: boolean;
-  onToggleMapEngine: () => void;
+  onOpenAddressManager?: () => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -30,8 +29,7 @@ export const Screen1TopBar: React.FC<Screen1TopBarProps> = ({
   isRouteLoading = false,
   canCalculateRoute,
   onOpenPriceConfig,
-  useGoogleMaps,
-  onToggleMapEngine,
+  onOpenAddressManager,
   theme,
   onToggleTheme,
   onLogout,
@@ -52,9 +50,7 @@ export const Screen1TopBar: React.FC<Screen1TopBarProps> = ({
     >
       {/* Navigation Header */}
       <HeaderNav
-        onOpenPriceConfig={onOpenPriceConfig}
-        useGoogleMaps={useGoogleMaps}
-        onToggleMapEngine={onToggleMapEngine}
+        onOpenSettings={onOpenPriceConfig}
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}
@@ -68,15 +64,32 @@ export const Screen1TopBar: React.FC<Screen1TopBarProps> = ({
       >
         <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-4">
           <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AddressInput
-              label="Origem ou CEP"
-              placeholder="Informe a origem ou CEP..."
-              value={origin}
-              onChange={onOriginChange}
-              type="origin"
-              autoFocus
-              theme={theme}
-            />
+            
+            {/* Origin Selector */}
+            <div className="relative flex-1 w-full">
+              <label className={`block text-xs font-semibold uppercase tracking-wider mb-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
+                Endereço de Origem
+              </label>
+              <button
+                onClick={onOpenAddressManager}
+                className={`w-full flex items-center justify-between text-left px-4 py-3 rounded-xl border transition-all ${
+                  isDark
+                    ? 'bg-zinc-900 border-zinc-800 hover:border-zinc-700 text-white'
+                    : 'bg-white border-slate-300 hover:border-slate-400 shadow-sm text-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <div className={`w-3.5 h-3.5 rounded-full ring-4 shrink-0 ${isDark ? 'bg-white ring-white/10' : 'bg-slate-900 ring-slate-900/10'}`} />
+                  <span className="truncate font-medium text-sm">
+                    {origin ? origin.address : 'Selecione o endereço de origem...'}
+                  </span>
+                </div>
+                <div className={`shrink-0 text-xs font-bold px-2 py-1 rounded-md ${isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-slate-100 text-slate-600'}`}>
+                  Alterar
+                </div>
+              </button>
+            </div>
+
             <AddressInput
               label="Destino ou CEP"
               placeholder="Informe o destino ou CEP..."
@@ -84,6 +97,7 @@ export const Screen1TopBar: React.FC<Screen1TopBarProps> = ({
               onChange={onDestinationChange}
               type="destination"
               theme={theme}
+              autoFocus
             />
           </div>
 

@@ -11,6 +11,7 @@ interface AddressInputProps {
   type: 'origin' | 'destination';
   autoFocus?: boolean;
   theme?: ThemeMode;
+  dropdownZIndex?: number;
 }
 
 export const AddressInput: React.FC<AddressInputProps> = ({
@@ -20,7 +21,8 @@ export const AddressInput: React.FC<AddressInputProps> = ({
   onChange,
   type,
   autoFocus = false,
-  theme = 'dark',
+  theme = 'light',
+  dropdownZIndex = 50,
 }) => {
   const [inputText, setInputText] = useState(value?.address || '');
   const [suggestions, setSuggestions] = useState<LocationPoint[]>([]);
@@ -154,11 +156,12 @@ export const AddressInput: React.FC<AddressInputProps> = ({
       {/* Autocomplete Dropdown List */}
       {isOpen && (
         <div
-          className={`absolute left-0 right-0 top-full mt-2 rounded-xl shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto divide-y animate-in fade-in slide-in-from-top-2 duration-150 border ${
+          className={`absolute left-0 right-0 top-full mt-2 rounded-xl shadow-2xl overflow-hidden max-h-80 overflow-y-auto divide-y animate-in fade-in slide-in-from-top-2 duration-150 border ${
             isDark
               ? 'bg-zinc-950 border-zinc-800 divide-zinc-900'
               : 'bg-white border-slate-200 divide-slate-100 shadow-slate-300/50'
           }`}
+          style={{ zIndex: dropdownZIndex }}
         >
           <div
             className={`px-3.5 py-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider border-b ${

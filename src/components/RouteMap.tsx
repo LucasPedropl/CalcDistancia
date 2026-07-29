@@ -1,18 +1,32 @@
 import React, { useEffect, useRef } from 'react';
 import type { RouteData, ThemeMode } from '../types';
+import type { AvailableMotoboy } from '../types/order';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 interface RouteMapProps {
   routeData: RouteData;
-  useGoogleMaps: boolean;
   theme?: ThemeMode;
+  availableMotoboys?: AvailableMotoboy[];
+  selectedMotoboyId?: string | null;
+  onMotoboySelect?: (motoboyId: string) => void;
 }
 
-export const RouteMap: React.FC<RouteMapProps> = ({ routeData, useGoogleMaps, theme = 'dark' }) => {
+export const RouteMap: React.FC<RouteMapProps> = ({
+  routeData,
+  theme = 'light',
+  availableMotoboys = [],
+  selectedMotoboyId = null,
+  onMotoboySelect,
+}) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const onMotoboySelectRef = useRef(onMotoboySelect);
+
+  useEffect(() => {
+    onMotoboySelectRef.current = onMotoboySelect;
+  }, [onMotoboySelect]);
 
   const isDark = theme === 'dark';
 
@@ -25,11 +39,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({ routeData, useGoogleMaps, th
   };
 
   useEffect(() => {
-    if (useGoogleMaps) {
-      destroyLeafletMap();
-      return;
-    }
-
     if (!mapContainerRef.current) return;
 
     const { origin, destination, polyline } = routeData;
@@ -99,6 +108,31 @@ export const RouteMap: React.FC<RouteMapProps> = ({ routeData, useGoogleMaps, th
       `<strong style="color:${isDark ? '#fff' : '#000'};">Destino:</strong><br/>${destination.address}`
     );
 
+    const svgBike = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>`;
+
+    availableMotoboys.forEach((motoboy) => {
+      const isSelected = selectedMotoboyId === motoboy.id;
+      const borderColor = isSelected ? (isDark ? '#ffffff' : '#0f172a') : '#10b981';
+      const bgColor = isSelected ? (isDark ? '#ffffff' : '#0f172a') : isDark ? '#18181b' : '#ffffff';
+      const textColor = isSelected ? (isDark ? '#000000' : '#ffffff') : '#10b981';
+      const ringSize = isSelected ? '0 0 0 4px rgba(15,23,42,0.2)' : '0 4px 6px -1px rgba(0,0,0,0.1)';
+
+      const mbIcon = L.divIcon({
+        className: 'custom-motoboy-marker',
+        html: `<div style="width: 36px; height: 36px; background-color: ${bgColor}; border: 2px solid ${borderColor}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: ${textColor}; box-shadow: ${ringSize}; cursor: pointer;">${svgBike}</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+      });
+
+      const mbMarker = L.marker([motoboy.lat, motoboy.lng], { icon: mbIcon }).addTo(map);
+      mbMarker.bindPopup(
+        `<strong style="color:${isDark ? '#fff' : '#000'};">${motoboy.name}</strong><br/><span style="color:#10b981; font-weight:bold; font-size:12px;">${motoboy.vehicle} · Disponível</span><br/><span style="font-size:11px; margin-top:4px; display:block;">Clique para selecionar</span>`
+      );
+      mbMarker.on('click', () => {
+        onMotoboySelectRef.current?.(motoboy.id);
+      });
+    });
+
     L.polyline(polyline, {
       color: isDark ? '#ffffff' : '#0f172a',
       weight: 5,
@@ -115,7 +149,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({ routeData, useGoogleMaps, th
     requestAnimationFrame(() => {
       map.invalidateSize();
     });
-  }, [routeData, isDark, useGoogleMaps]);
+  }, [routeData, isDark, availableMotoboys, selectedMotoboyId]);
 
   useEffect(() => {
     return () => {
@@ -123,32 +157,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({ routeData, useGoogleMaps, th
     };
   }, []);
 
-  if (useGoogleMaps) {
-    const googleMapUrl = `https://maps.google.com/maps?saddr=${encodeURIComponent(
-      routeData.origin.address
-    )}&daddr=${encodeURIComponent(routeData.destination.address)}&output=embed&t=m`;
-
-    return (
-      <div
-        className={`w-full h-full relative flex flex-col ${
-          isDark ? 'bg-zinc-950' : 'bg-slate-100'
-        }`}
-      >
-        <iframe
-          title="Google Maps Driving Route"
-          src={googleMapUrl}
-          className={`w-full h-full border-0 ${
-            isDark ? 'filter invert contrast-125 brightness-90 saturate-0' : ''
-          }`}
-          loading="lazy"
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className={`w-full h-full relative ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
-      <div ref={mapContainerRef} className="w-full h-full z-0" />
+    <div className={`relative h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
+      <div ref={mapContainerRef} className="z-0 h-full w-full" />
     </div>
   );
 };

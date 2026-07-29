@@ -4,6 +4,19 @@
   :root {
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a[href],
+  label[for],
+  select,
+  summary,
+  input[type='checkbox'],
+  input[type='radio'],
+  .leaflet-marker-icon,
+  .leaflet-control-zoom a {
+    cursor: pointer;
+  }
 }
 
 body {

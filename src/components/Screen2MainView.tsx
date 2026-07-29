@@ -1,71 +1,103 @@
 import React from 'react';
 import type { LocationPoint, RouteData, PriceTier, ThemeMode } from '../types';
+import type { DeliveryOrder } from '../types/order';
+import type { MotoboyWithDistance } from '../services/motoboyService';
+import type { SavedAddress } from '../services/addressService';
 import { SidebarMenu } from './SidebarMenu';
 import { RouteMap } from './RouteMap';
 import { HeaderNav } from './HeaderNav';
 
 interface Screen2MainViewProps {
   routeData: RouteData;
-  onUpdateOrigin: (loc: LocationPoint | null) => void;
+  origin: SavedAddress | null;
+  userId: string;
+  onUpdateOrigin: (loc: SavedAddress | null) => void;
   onUpdateDestination: (loc: LocationPoint | null) => void;
-  onOpenPriceConfig: () => void;
+  onOpenSettings: () => void;
   onConfirmPedido: (price: number | null, tier?: PriceTier) => void;
   priceTiers: PriceTier[];
-  useGoogleMaps: boolean;
-  onToggleMapEngine: () => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
   onLogout: () => void;
-  canEditPriceTable: boolean;
+  userName?: string;
+  userEmail?: string;
+  availableMotoboys: MotoboyWithDistance[];
+  selectedMotoboyId: string | null;
+  onSelectMotoboy: (motoboyId: string | null) => void;
+  pendingOrder: DeliveryOrder | null;
+  onNewOrder: () => void;
+  onCancelOrder?: () => void;
 }
 
 export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
   routeData,
+  origin,
+  userId,
   onUpdateOrigin,
   onUpdateDestination,
-  onOpenPriceConfig,
+  onOpenSettings,
   onConfirmPedido,
   priceTiers,
-  useGoogleMaps,
-  onToggleMapEngine,
   theme,
   onToggleTheme,
   onLogout,
-  canEditPriceTable,
+  userName,
+  userEmail,
+  availableMotoboys,
+  selectedMotoboyId,
+  onSelectMotoboy,
+  pendingOrder,
+  onNewOrder,
+  onCancelOrder,
 }) => {
   const isDark = theme === 'dark';
 
   return (
     <div
-      className={`h-screen w-screen flex flex-col overflow-hidden font-sans transition-colors ${
+      className={`flex h-screen w-screen flex-col overflow-hidden font-sans transition-colors ${
         isDark ? 'bg-black text-white' : 'bg-slate-50 text-slate-900'
       }`}
     >
       <HeaderNav
-        onOpenPriceConfig={canEditPriceTable ? onOpenPriceConfig : undefined}
-        useGoogleMaps={useGoogleMaps}
-        onToggleMapEngine={onToggleMapEngine}
+        onOpenSettings={onOpenSettings}
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}
+        userName={userName}
+        userEmail={userEmail}
       />
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+      <div className="relative flex flex-1 flex-col overflow-hidden lg:flex-row">
         <SidebarMenu
           routeData={routeData}
+          origin={origin}
+          userId={userId}
           onUpdateOrigin={onUpdateOrigin}
           onUpdateDestination={onUpdateDestination}
+          onOpenSettings={onOpenSettings}
           onConfirmPedido={onConfirmPedido}
           priceTiers={priceTiers}
           theme={theme}
+          availableMotoboys={availableMotoboys}
+          selectedMotoboyId={selectedMotoboyId}
+          onSelectMotoboy={onSelectMotoboy}
+          pendingOrder={pendingOrder}
+          onNewOrder={onNewOrder}
+          onCancelOrder={onCancelOrder}
         />
 
         <main
-          className={`flex-1 h-full relative border-t lg:border-t-0 lg:border-l ${
+          className={`relative h-full flex-1 border-t lg:border-t-0 lg:border-l ${
             isDark ? 'border-zinc-800' : 'border-slate-200'
           }`}
         >
-          <RouteMap routeData={routeData} useGoogleMaps={useGoogleMaps} theme={theme} />
+          <RouteMap
+            routeData={routeData}
+            theme={theme}
+            availableMotoboys={availableMotoboys}
+            selectedMotoboyId={selectedMotoboyId}
+            onMotoboySelect={(id) => onSelectMotoboy(id)}
+          />
         </main>
       </div>
     </div>
