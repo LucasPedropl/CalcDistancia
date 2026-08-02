@@ -2,6 +2,9 @@ import type { LocationPoint } from '../types';
 
 const LAST_ORIGIN_KEY = 'calc_distancia_last_origin';
 const FAVORITE_MOTOBOYS_KEY = 'calc_distancia_favorite_motoboys';
+const MOTOBOY_RADIUS_KEY = 'calc_distancia_motoboy_search_radius';
+
+export const DEFAULT_ESTABLISHMENT_MOTOBOY_RADIUS_KM = 15;
 
 export function saveLastOrigin(userId: string, origin: LocationPoint): void {
   localStorage.setItem(`${LAST_ORIGIN_KEY}_${userId}`, JSON.stringify(origin));
@@ -39,4 +42,21 @@ export function toggleFavoriteMotoboy(userId: string, motoboyId: string): string
     : [...current, motoboyId];
   saveFavoriteMotoboyIds(userId, next);
   return next;
+}
+
+export function loadMotoboySearchRadiusKm(userId: string): number {
+  try {
+    const raw = localStorage.getItem(`${MOTOBOY_RADIUS_KEY}_${userId}`);
+    if (!raw) return DEFAULT_ESTABLISHMENT_MOTOBOY_RADIUS_KM;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 1 && parsed <= 50
+      ? Math.round(parsed)
+      : DEFAULT_ESTABLISHMENT_MOTOBOY_RADIUS_KM;
+  } catch {
+    return DEFAULT_ESTABLISHMENT_MOTOBOY_RADIUS_KM;
+  }
+}
+
+export function saveMotoboySearchRadiusKm(userId: string, radiusKm: number): void {
+  localStorage.setItem(`${MOTOBOY_RADIUS_KEY}_${userId}`, String(radiusKm));
 }

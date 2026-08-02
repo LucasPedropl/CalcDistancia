@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { LocationPoint, ThemeMode } from '../types';
-import { searchAddressOrCep, POPULAR_LOCATIONS } from '../services/geocodingService';
+import {
+  addressHasStreetNumber,
+  searchAddressOrCep,
+  POPULAR_LOCATIONS,
+} from '../services/geocodingService';
+import { CompleteAddressModal } from './CompleteAddressModal';
 import { MapPin, X, Loader2, Navigation } from 'lucide-react';
 
 interface AddressInputProps {
@@ -28,6 +33,7 @@ export const AddressInput: React.FC<AddressInputProps> = ({
   const [suggestions, setSuggestions] = useState<LocationPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [pendingLocation, setPendingLocation] = useState<LocationPoint | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isDark = theme === 'dark';
@@ -74,9 +80,21 @@ export const AddressInput: React.FC<AddressInputProps> = ({
   }, [inputText, isOpen, value]);
 
   const handleSelect = (loc: LocationPoint) => {
+    setIsOpen(false);
+
+    if (!addressHasStreetNumber(loc.address) || loc.cep) {
+      setPendingLocation(loc);
+      return;
+    }
+
     setInputText(loc.address);
     onChange(loc);
-    setIsOpen(false);
+  };
+
+  const handleCompleteAddress = (loc: LocationPoint) => {
+    setInputText(loc.address);
+    onChange(loc);
+    setPendingLocation(null);
   };
 
   const handleClear = (e: React.MouseEvent) => {
@@ -216,6 +234,14 @@ export const AddressInput: React.FC<AddressInputProps> = ({
           )}
         </div>
       )}
+
+      <CompleteAddressModal
+        isOpen={pendingLocation !== null}
+        base={pendingLocation}
+        theme={theme}
+        onClose={() => setPendingLocation(null)}
+        onConfirm={handleCompleteAddress}
+      />
     </div>
   );
 };

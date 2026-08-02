@@ -8,6 +8,7 @@ import {
 import { formatPhoneMask, isValidPhone } from '../../../utils/phoneValidation';
 import { User, Phone, Mail, Car, MapPin, Save, CheckCircle, AlertCircle } from 'lucide-react';
 import { MotoboyQrCard } from '../../collection/components/PickupConfirm';
+import { RadiusKmControl } from '../../../components/RadiusKmControl';
 import type { ThemeMode } from '../../../types';
 
 interface MotoboyFormProps {
@@ -258,6 +259,20 @@ export function MotoboyForm({ theme = 'light' }: MotoboyFormProps) {
               <option value="RJ">Rio de Janeiro</option>
             </select>
           </div>
+        </div>
+
+        <div
+          className={`rounded-xl border p-4 ${
+            isDark ? 'border-zinc-800 bg-zinc-900/40' : 'border-slate-200 bg-slate-50'
+          }`}
+        >
+          <RadiusKmControl
+            valueKm={formData.raioKm}
+            onChange={(raioKm) => setFormData((prev) => ({ ...prev, raioKm }))}
+            theme={theme}
+            label="Raio de aceite de corridas"
+            hint="Só verá pedidos cuja origem esteja dentro deste raio a partir da sua posição."
+          />
         </div>
 
         <div

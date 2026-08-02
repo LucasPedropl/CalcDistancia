@@ -15,7 +15,17 @@ const MOTOBOY_ID_BY_EMAIL: Record<string, string> = {
   'marcos@exemplo.com': 'mb-002',
   'ana@exemplo.com': 'mb-003',
   'ricardo@exemplo.com': 'mb-004',
+  'felipe@exemplo.com': 'mb-005',
+  'carla@exemplo.com': 'mb-006',
 };
+
+/** Migra sessões antigas que usavam CLIENTE para o papel de estabelecimento. */
+function migrateLegacySession(session: StoredAuthSession): StoredAuthSession {
+  if (session.role === 'CLIENTE' && session.id.startsWith('client-')) {
+    return { ...session, role: 'ESTABELECIMENTO' };
+  }
+  return session;
+}
 
 export function buildStableUserId(role: UserRole, email: string): string {
   const normalizedEmail = email.toLowerCase().trim();
@@ -28,14 +38,26 @@ export function buildStableUserId(role: UserRole, email: string): string {
     return MOTOBOY_ID_BY_EMAIL[normalizedEmail] ?? 'mb-001';
   }
 
-  return `client-${normalizedEmail.replace(/[^a-z0-9]/g, '-')}`;
+  if (role === 'ESTABELECIMENTO') {
+    return `estabelecimento-${normalizedEmail.replace(/[^a-z0-9]/g, '-')}`;
+  }
+
+  if (role === 'CLIENTE') {
+    return `consumidor-${normalizedEmail.replace(/[^a-z0-9]/g, '-')}`;
+  }
+
+  if (role === 'CONDOMINIO') {
+    return `condominio-${normalizedEmail.replace(/[^a-z0-9]/g, '-')}`;
+  }
+
+  return `user-${normalizedEmail.replace(/[^a-z0-9]/g, '-')}`;
 }
 
 export function loadAuthSession(): StoredAuthSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as StoredAuthSession;
+    return migrateLegacySession(JSON.parse(raw) as StoredAuthSession);
   } catch {
     return null;
   }
@@ -56,16 +78,21 @@ export function createAuthSession(role: UserRole, email: string): StoredAuthSess
     'marcos@exemplo.com': 'Marcos Silva',
     'ana@exemplo.com': 'Ana Costa',
     'ricardo@exemplo.com': 'Ricardo Lima',
+    'felipe@exemplo.com': 'Felipe Souza',
+    'carla@exemplo.com': 'Carla Mendes',
+  };
+
+  const roleLabels: Record<UserRole, string> = {
+    ADMIN: 'Administrador',
+    MOTOBOY: motoboyProfileNames[normalizedEmail] ?? normalizedEmail.split('@')[0] ?? 'Motoboy',
+    ESTABELECIMENTO: normalizedEmail.split('@')[0] || 'Estabelecimento',
+    CLIENTE: normalizedEmail.split('@')[0] || 'Cliente',
+    CONDOMINIO: normalizedEmail.split('@')[0] || 'Condomínio',
   };
 
   return {
     id: buildStableUserId(role, normalizedEmail),
-    name:
-      role === 'ADMIN'
-        ? 'Administrador'
-        : role === 'MOTOBOY'
-          ? motoboyProfileNames[normalizedEmail] ?? normalizedEmail.split('@')[0] ?? 'Motoboy'
-          : normalizedEmail.split('@')[0] || 'Cliente',
+    name: roleLabels[role],
     email: normalizedEmail,
     role,
   };

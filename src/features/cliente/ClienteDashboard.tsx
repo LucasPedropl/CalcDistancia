@@ -19,7 +19,7 @@ import { useActiveOrderForClient } from '../../hooks/useOrders';
 import { buildRouteDataFromOrder } from '../../utils/orderRoute';
 import { useAuth } from '../../context/AuthContext';
 import { getSavedAddresses, type SavedAddress } from '../../services/addressService';
-import { loadLastOrigin, saveLastOrigin, loadFavoriteMotoboyIds, toggleFavoriteMotoboy } from '../../services/clientStateService';
+import { loadLastOrigin, saveLastOrigin, loadFavoriteMotoboyIds, toggleFavoriteMotoboy, loadMotoboySearchRadiusKm, saveMotoboySearchRadiusKm } from '../../services/clientStateService';
 
 import { ClienteMainView } from './components/ClienteMainView';
 import { ClienteDeliverySetup } from './components/ClienteDeliverySetup';
@@ -79,6 +79,7 @@ export function ClienteDashboard() {
   const [orderTier, setOrderTier] = useState<PriceTier | undefined>(undefined);
   const [selectedMotoboyId, setSelectedMotoboyId] = useState<string | null>(null);
   const [favoriteMotoboyIds, setFavoriteMotoboyIds] = useState<string[]>([]);
+  const [motoboySearchRadiusKm, setMotoboySearchRadiusKm] = useState(15);
 
   const clientActiveOrder = useActiveOrderForClient(user?.id);
   const acceptedToastShownRef = useRef<string | null>(null);
@@ -97,7 +98,14 @@ export function ClienteDashboard() {
   useEffect(() => {
     if (!user) return;
     setFavoriteMotoboyIds(loadFavoriteMotoboyIds(user.id));
+    setMotoboySearchRadiusKm(loadMotoboySearchRadiusKm(user.id));
   }, [user]);
+
+  const handleMotoboySearchRadiusChange = (radiusKm: number) => {
+    if (!user) return;
+    setMotoboySearchRadiusKm(radiusKm);
+    saveMotoboySearchRadiusKm(user.id, radiusKm);
+  };
 
   useEffect(() => {
     setPriceTiers(loadSavedPriceTiers());
@@ -366,13 +374,15 @@ export function ClienteDashboard() {
   const isAdmin = user?.role === 'ADMIN';
 
   const homeMotoboys = useMemo(() => {
-    return getMotoboysNearLocation(origin ?? DEFAULT_REFERENCE_LOCATION);
-  }, [origin]);
+    return getMotoboysNearLocation(origin ?? DEFAULT_REFERENCE_LOCATION, {
+      radiusKm: motoboySearchRadiusKm,
+    });
+  }, [origin, motoboySearchRadiusKm]);
 
   const deliveryMotoboys = useMemo(() => {
     if (!routeData) return homeMotoboys;
-    return getMotoboysNearLocation(routeData.origin);
-  }, [routeData, homeMotoboys]);
+    return getMotoboysNearLocation(routeData.origin, { radiusKm: motoboySearchRadiusKm });
+  }, [routeData, homeMotoboys, motoboySearchRadiusKm]);
 
   const selectedMotoboy = deliveryMotoboys.find((m) => m.id === selectedMotoboyId);
   const showDeliveryResult = viewMode === 'DELIVERY' && routeData !== null;
@@ -392,6 +402,8 @@ export function ClienteDashboard() {
           onSendToSelected={handleSendToSelected}
           favoriteMotoboyIds={favoriteMotoboyIds}
           onToggleFavorite={handleToggleFavoriteMotoboy}
+          motoboySearchRadiusKm={motoboySearchRadiusKm}
+          onMotoboySearchRadiusChange={handleMotoboySearchRadiusChange}
           theme={theme}
           onToggleTheme={handleToggleTheme}
           onLogout={handleLogout}
@@ -439,7 +451,7 @@ export function ClienteDashboard() {
             userName={user?.name}
             userEmail={user?.email}
             onlineMotoboyCount={homeMotoboys.length}
-            motoboyRegionLabel={origin ? 'na sua região' : 'em Belo Horizonte (demo)'}
+            motoboyRegionLabel={origin ? 'na sua região' : 'em São Mateus, ES (demo)'}
           />
           <ResponsiveMapShell
             theme={theme}
@@ -485,6 +497,8 @@ export function ClienteDashboard() {
                 onSelectMotoboy={setSelectedMotoboyId}
                 favoriteMotoboyIds={favoriteMotoboyIds}
                 onToggleFavorite={handleToggleFavoriteMotoboy}
+                motoboySearchRadiusKm={motoboySearchRadiusKm}
+                onMotoboySearchRadiusChange={handleMotoboySearchRadiusChange}
                 deliveryDistanceKm={routeData?.distanceKm ?? null}
                 theme={theme}
               />

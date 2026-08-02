@@ -1,3 +1,5 @@
+import { DEMO_MOTOBOY_IDS } from './motoboyService';
+
 export interface MotoboyNotification {
   id: string;
   motoboyId: string;
@@ -54,8 +56,7 @@ export function pushBroadcastMotoboyNotification(input: {
   message: string;
   orderId?: string;
 }): void {
-  const motoboyIds = ['mb-001', 'mb-002', 'mb-003', 'mb-004', 'mb-005', 'mb-006'];
-  motoboyIds.forEach((motoboyId) => {
+  DEMO_MOTOBOY_IDS.forEach((motoboyId) => {
     pushMotoboyNotification({ motoboyId, ...input });
   });
 }

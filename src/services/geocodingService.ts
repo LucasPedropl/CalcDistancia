@@ -3,27 +3,28 @@ import type { LocationPoint, RouteData } from '../types';
 // Preset popular locations for instant seamless suggestions
 export const POPULAR_LOCATIONS: LocationPoint[] = [
   {
-    address: 'Praça da Liberdade, Savassi - Belo Horizonte, MG',
-    lat: -19.9320,
-    lng: -43.9380,
-    city: 'Belo Horizonte',
-    state: 'MG',
-    district: 'Savassi',
-  },
-  {
-    address: 'Aeroporto Internacional de Confins (CNF) - Confins, MG',
-    lat: -19.6341,
-    lng: -43.9664,
-    city: 'Confins',
-    state: 'MG',
-  },
-  {
-    address: 'Mercado Central, Av. Augusto de Lima, 744 - Centro, Belo Horizonte, MG',
-    lat: -19.9229,
-    lng: -43.9443,
-    city: 'Belo Horizonte',
-    state: 'MG',
+    address: 'Praça Custódio Francisco da Silva - Centro, São Mateus, ES',
+    lat: -18.7163,
+    lng: -39.8589,
+    city: 'São Mateus',
+    state: 'ES',
     district: 'Centro',
+  },
+  {
+    address: 'Av. Jones dos Santos Neves, 100 - Centro, São Mateus, ES',
+    lat: -18.7175,
+    lng: -39.8570,
+    city: 'São Mateus',
+    state: 'ES',
+    district: 'Centro',
+  },
+  {
+    address: 'Praia de Guriri - Guriri, São Mateus, ES',
+    lat: -18.7420,
+    lng: -39.8230,
+    city: 'São Mateus',
+    state: 'ES',
+    district: 'Guriri',
   },
   {
     address: 'Avenida Paulista, 1578 - Bela Vista, São Paulo, SP',
@@ -70,8 +71,8 @@ export async function searchAddressOrCep(query: string): Promise<LocationPoint[]
               `${data.logradouro}, ${data.localidade}, ${data.uf}, Brasil`
             )}&limit=1`
           );
-          let lat = -19.9191; // Default BH center fallback if geocode fails
-          let lng = -43.9386;
+          let lat = -18.7163;
+          let lng = -39.8589;
 
           if (geoRes.ok) {
             const geoData = await geoRes.json();
@@ -302,15 +303,164 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
   };
 }
 
+/** Detects if a Brazilian address string already includes a street number. */
+export function addressHasStreetNumber(address: string): boolean {
+  const streetSegment = address.split(' - ')[0] ?? address;
+  return (
+    /,\s*\d{1,6}\b/.test(streetSegment) ||
+    /\b(nº|n°|numero|número)\s*\d{1,6}\b/i.test(streetSegment)
+  );
+}
+
+function formatAddressWithNumberParts(
+  street: string,
+  number: string,
+  complement: string,
+  district: string,
+  city: string,
+  state: string,
+  cep?: string,
+): string {
+  const numberPart = number.trim() ? `, ${number.trim()}` : '';
+  const complementPart = complement.trim() ? ` - ${complement.trim()}` : '';
+  const locationTail = [district, city, state].filter(Boolean).join(', ');
+  const cepPart = cep ? ` (CEP ${cep})` : '';
+  return `${street}${numberPart}${complementPart}${locationTail ? `, ${locationTail}` : ''}${cepPart}`;
+}
+
+/** Geocodes a street + number via Nominatim for precise coordinates. */
+export async function geocodeLocationWithNumber(
+  base: LocationPoint,
+  number: string,
+  complement = '',
+): Promise<LocationPoint> {
+  const street = base.address.split(',')[0]?.trim() || base.address;
+  const query = [street, number.trim(), base.district, base.city, base.state, 'Brasil']
+    .filter(Boolean)
+    .join(', ');
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=1`,
+      { headers: { 'Accept-Language': 'pt-BR' } },
+    );
+
+    if (response.ok) {
+      const data = (await response.json()) as Array<{ lat: string; lon: string }>;
+      if (data.length > 0) {
+        const address = formatAddressWithNumberParts(
+          street,
+          number,
+          complement,
+          base.district ?? '',
+          base.city ?? '',
+          base.state ?? '',
+          base.cep,
+        );
+
+        return {
+          address,
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          city: base.city,
+          state: base.state,
+          district: base.district,
+          cep: base.cep,
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Geocode with number failed', error);
+  }
+
+  throw new Error('Endereço não localizado');
+}
+
+export interface ViaCepLookupResult {
+  cep: string;
+  street: string;
+  district: string;
+  city: string;
+  state: string;
+}
+
+export function formatCepMask(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+/** Busca endereço pelo CEP via ViaCEP. */
+export async function lookupCep(cep: string): Promise<ViaCepLookupResult | null> {
+  const digits = cep.replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as {
+      erro?: boolean;
+      cep?: string;
+      logradouro?: string;
+      bairro?: string;
+      localidade?: string;
+      uf?: string;
+    };
+
+    if (data.erro) return null;
+
+    return {
+      cep: data.cep ?? formatCepMask(digits),
+      street: data.logradouro ?? '',
+      district: data.bairro ?? '',
+      city: data.localidade ?? '',
+      state: data.uf ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+export interface AddressFormInput {
+  cep: string;
+  street: string;
+  number: string;
+  complement: string;
+  district: string;
+  city: string;
+  state: string;
+}
+
+/** Monta LocationPoint geocodificado a partir do formulário completo. */
+export async function geocodeAddressForm(fields: AddressFormInput): Promise<LocationPoint> {
+  const base: LocationPoint = {
+    address: fields.street.trim(),
+    lat: 0,
+    lng: 0,
+    cep: formatCepMask(fields.cep),
+    city: fields.city.trim(),
+    state: fields.state.trim(),
+    district: fields.district.trim(),
+  };
+
+  return geocodeLocationWithNumber(base, fields.number, fields.complement);
+}
+
 export function buildDestinationAddress(
   base: ReverseGeocodeResult,
   number: string,
   complement: string,
 ): LocationPoint {
-  const numberPart = number.trim() ? `, ${number.trim()}` : '';
-  const complementPart = complement.trim() ? ` - ${complement.trim()}` : '';
-  const locationTail = [base.district, base.city, base.state].filter(Boolean).join(', ');
-  const address = `${base.street}${numberPart}${complementPart}${locationTail ? `, ${locationTail}` : ''}`;
+  const address = formatAddressWithNumberParts(
+    base.street,
+    number,
+    complement,
+    base.district,
+    base.city,
+    base.state,
+    base.cep,
+  );
 
   return {
     address,

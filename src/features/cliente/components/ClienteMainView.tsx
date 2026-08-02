@@ -20,6 +20,8 @@ interface ClienteMainViewProps {
   onSendToSelected: () => void;
   favoriteMotoboyIds?: string[];
   onToggleFavorite?: (motoboyId: string) => void;
+  motoboySearchRadiusKm?: number;
+  onMotoboySearchRadiusChange?: (radiusKm: number) => void;
   theme: ThemeMode;
   onToggleTheme: () => void;
   onLogout: () => void;
@@ -42,6 +44,8 @@ export function ClienteMainView({
   onSendToSelected,
   favoriteMotoboyIds,
   onToggleFavorite,
+  motoboySearchRadiusKm,
+  onMotoboySearchRadiusChange,
   theme,
   onToggleTheme,
   onLogout,
@@ -61,7 +65,7 @@ export function ClienteMainView({
         userName={userName}
         userEmail={userEmail}
         onlineMotoboyCount={motoboys.length}
-        motoboyRegionLabel={origin ? 'na sua região' : 'em Belo Horizonte (demo)'}
+        motoboyRegionLabel={origin ? 'na sua região' : 'em São Mateus, ES (demo)'}
       />
 
       <ResponsiveMapShell
@@ -90,6 +94,8 @@ export function ClienteMainView({
             onSendToSelected={onSendToSelected}
             favoriteMotoboyIds={favoriteMotoboyIds}
             onToggleFavorite={onToggleFavorite}
+            motoboySearchRadiusKm={motoboySearchRadiusKm}
+            onMotoboySearchRadiusChange={onMotoboySearchRadiusChange}
             clientActiveOrder={clientActiveOrder}
             onViewActiveOrder={onViewActiveOrder}
             onCancelActiveOrder={onCancelActiveOrder}

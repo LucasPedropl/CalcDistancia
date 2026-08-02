@@ -7,7 +7,7 @@ import {
   type StoredAuthSession,
 } from '../services/sessionService';
 
-export type UserRole = 'CLIENTE' | 'MOTOBOY' | 'ADMIN';
+export type UserRole = 'ESTABELECIMENTO' | 'MOTOBOY' | 'CLIENTE' | 'CONDOMINIO' | 'ADMIN';
 
 interface User {
   id: string;

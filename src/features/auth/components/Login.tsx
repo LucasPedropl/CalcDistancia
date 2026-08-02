@@ -1,20 +1,97 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth, type UserRole } from '../../../context/AuthContext';
-import { Store, Bike, ArrowLeft, Mail, Lock, Route, AlertCircle } from 'lucide-react';
+import {
+  Store,
+  Bike,
+  ArrowLeft,
+  Mail,
+  Lock,
+  Route,
+  AlertCircle,
+  Users,
+  Building2,
+  Shield,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+interface AuthTypeConfig {
+  role: UserRole;
+  label: string;
+  description: string;
+  dashboardPath: string;
+  defaultEmail: string;
+  icon: LucideIcon;
+}
+
+const AUTH_TYPE_CONFIG: Record<string, AuthTypeConfig> = {
+  estabelecimento: {
+    role: 'ESTABELECIMENTO',
+    label: 'Estabelecimento',
+    description: 'Gerencie entregas e calcule rotas do seu ponto de venda',
+    dashboardPath: '/estabelecimento',
+    defaultEmail: 'pdv@exemplo.com',
+    icon: Store,
+  },
+  cliente: {
+    role: 'ESTABELECIMENTO',
+    label: 'Estabelecimento',
+    description: 'Gerencie entregas e calcule rotas do seu ponto de venda',
+    dashboardPath: '/estabelecimento',
+    defaultEmail: 'pdv@exemplo.com',
+    icon: Store,
+  },
+  motoboy: {
+    role: 'MOTOBOY',
+    label: 'Motoboy',
+    description: 'Visualize rotas e aceite corridas',
+    dashboardPath: '/motoboy',
+    defaultEmail: 'motoboy@exemplo.com',
+    icon: Bike,
+  },
+  clientes: {
+    role: 'CLIENTE',
+    label: 'Cliente',
+    description: 'Acompanhe suas entregas e receba notificações',
+    dashboardPath: '/clientes',
+    defaultEmail: 'cliente@exemplo.com',
+    icon: Users,
+  },
+  condominio: {
+    role: 'CONDOMINIO',
+    label: 'Condomínio',
+    description: 'Gerencie autorizações de entrada e entregas na portaria',
+    dashboardPath: '/condominio',
+    defaultEmail: 'sindico@condominio.com',
+    icon: Building2,
+  },
+};
 
 export const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const { type } = useParams<{ type: string }>();
 
-  const isCliente = type === 'cliente';
-  const role: UserRole = isCliente ? 'CLIENTE' : 'MOTOBOY';
+  const config = type ? AUTH_TYPE_CONFIG[type] : undefined;
 
-  const [email, setEmail] = useState(isCliente ? 'cliente@exemplo.com' : 'motoboy@exemplo.com');
+  const [email, setEmail] = useState(config?.defaultEmail ?? '');
   const [password, setPassword] = useState('123456');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  if (!config) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-slate-900">
+        <Shield className="h-10 w-10 text-slate-400" />
+        <p className="text-sm font-medium text-slate-600">Tipo de acesso não reconhecido.</p>
+        <Link to="/" className="text-sm font-semibold text-slate-900 underline">
+          Voltar ao início
+        </Link>
+      </div>
+    );
+  }
+
+  const RoleIcon = config.icon;
 
   const handleLogin = (event: React.FormEvent) => {
     event.preventDefault();
@@ -26,23 +103,13 @@ export const Login = () => {
     }
 
     setIsLoading(true);
-
-    login(role, email);
-
-    if (role === 'CLIENTE') {
-      navigate('/cliente');
-    } else {
-      navigate('/motoboy');
-    }
-
+    login(config.role, email);
+    navigate(config.dashboardPath);
     setIsLoading(false);
   };
 
-  const RoleIcon = isCliente ? Store : Bike;
-  const roleLabel = isCliente ? 'Cliente' : 'Motoboy';
-
   return (
-    <div className="relative min-h-screen bg-slate-50 text-slate-900 overflow-hidden selection:bg-slate-900 selection:text-white">
+    <div className="relative min-h-screen overflow-hidden bg-slate-50 text-slate-900 selection:bg-slate-900 selection:text-white">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         style={{
@@ -72,7 +139,7 @@ export const Login = () => {
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   UaiPDV Rota
                 </p>
-                <h1 className="text-lg font-bold tracking-tight">Acesso {roleLabel}</h1>
+                <h1 className="text-lg font-bold tracking-tight">Acesso {config.label}</h1>
               </div>
             </div>
 
@@ -81,12 +148,8 @@ export const Login = () => {
                 <RoleIcon className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-semibold">Entrar como {roleLabel}</p>
-                <p className="text-xs text-slate-500">
-                  {isCliente
-                    ? 'Gerencie entregas e calcule rotas'
-                    : 'Visualize rotas e aceite corridas'}
-                </p>
+                <p className="text-sm font-semibold">Entrar como {config.label}</p>
+                <p className="text-xs text-slate-500">{config.description}</p>
               </div>
             </div>
           </div>

@@ -7,6 +7,8 @@ import { ClienteDashboard } from './features/cliente/ClienteDashboard';
 import { MotoboyDashboard } from './features/motoboys/MotoboyDashboard';
 import { AdminDashboard } from './features/admin/AdminDashboard';
 import { AdminLogin } from './features/admin/components/AdminLogin';
+import { ClientesPortal } from './features/clientes/ClientesPortal';
+import { CondominioDashboard } from './features/condominio/CondominioDashboard';
 
 const ProtectedRoute = ({
   children,
@@ -35,6 +37,18 @@ const ProtectedRoute = ({
     if (user.role === 'ADMIN') {
       return <Navigate to="/admin" replace />;
     }
+    if (user.role === 'ESTABELECIMENTO') {
+      return <Navigate to="/estabelecimento" replace />;
+    }
+    if (user.role === 'MOTOBOY') {
+      return <Navigate to="/motoboy" replace />;
+    }
+    if (user.role === 'CLIENTE') {
+      return <Navigate to="/clientes" replace />;
+    }
+    if (user.role === 'CONDOMINIO') {
+      return <Navigate to="/condominio" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -49,6 +63,8 @@ export const App = () => {
       <Route path="/auth/:type" element={<Login />} />
       <Route path="/login" element={<Navigate to="/" replace />} />
 
+      <Route path="/cliente/*" element={<Navigate to="/estabelecimento" replace />} />
+
       <Route
         path="/admin/*"
         element={
@@ -59,21 +75,39 @@ export const App = () => {
       />
 
       <Route
-        path="/cliente/*"
+        path="/estabelecimento/*"
         element={
-          <ProtectedRoute allowedRoles={['CLIENTE']}>
+          <ProtectedRoute allowedRoles={['ESTABELECIMENTO']}>
             <ClienteDashboard />
           </ProtectedRoute>
         }
       />
-      
-      <Route 
-        path="/motoboy/*" 
+
+      <Route
+        path="/motoboy/*"
         element={
           <ProtectedRoute allowedRoles={['MOTOBOY']}>
             <MotoboyDashboard />
           </ProtectedRoute>
-        } 
+        }
+      />
+
+      <Route
+        path="/clientes/*"
+        element={
+          <ProtectedRoute allowedRoles={['CLIENTE']} loginPath="/auth/clientes">
+            <ClientesPortal />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/condominio/*"
+        element={
+          <ProtectedRoute allowedRoles={['CONDOMINIO']} loginPath="/auth/condominio">
+            <CondominioDashboard />
+          </ProtectedRoute>
+        }
       />
     </Routes>
   );

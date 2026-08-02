@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MapPin, Plus, Trash2, Star, CheckCircle } from 'lucide-react';
+import { X, MapPin, Plus, Trash2, Star, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
-import { AddressInput } from '../../../components/AddressInput';
-import type { LocationPoint, ThemeMode } from '../../../types';
+import {
+  AddressRegistrationForm,
+  type AddressRegistrationFormHandle,
+} from '../../../components/AddressRegistrationForm';
+import type { ThemeMode } from '../../../types';
 import {
   getSavedAddresses,
   saveAddress,
@@ -19,17 +22,19 @@ interface AddressManagerModalProps {
   onAddressSelected?: (addr: SavedAddress) => void;
 }
 
-export const AddressManagerModal: React.FC<AddressManagerModalProps> = ({
+export function AddressManagerModal({
   isOpen,
   onClose,
   theme,
   onAddressSelected,
-}) => {
+}: AddressManagerModalProps) {
   const { user } = useAuth();
+  const addressFormRef = useRef<AddressRegistrationFormHandle>(null);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [isAdding, setIsAdding] = useState(false);
-  const [newLocation, setNewLocation] = useState<LocationPoint | null>(null);
   const [newName, setNewName] = useState('');
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
   const isDark = theme === 'dark';
@@ -38,26 +43,38 @@ export const AddressManagerModal: React.FC<AddressManagerModalProps> = ({
     if (isOpen && user) {
       setAddresses(getSavedAddresses(user.id));
       setIsAdding(false);
-      setNewLocation(null);
       setNewName('');
+      setIsFormValid(false);
       setSavedFeedback(false);
+      addressFormRef.current?.reset();
     }
   }, [isOpen, user]);
 
   if (!isOpen || !user) return null;
 
-  const handleSave = () => {
-    if (!newLocation || !newName.trim()) return;
+  const resetAddForm = () => {
+    setIsAdding(false);
+    setNewName('');
+    setIsFormValid(false);
+    addressFormRef.current?.reset();
+  };
+
+  const handleSave = async () => {
+    if (!newName.trim() || isSaving) return;
+
+    setIsSaving(true);
+    const location = await addressFormRef.current?.resolveLocation();
+    setIsSaving(false);
+
+    if (!location) return;
 
     const updated = saveAddress(user.id, {
-      ...newLocation,
-      name: newName,
+      ...location,
+      name: newName.trim(),
       isDefault: addresses.length === 0,
     });
     setAddresses(updated);
-    setIsAdding(false);
-    setNewLocation(null);
-    setNewName('');
+    resetAddForm();
     setSavedFeedback(true);
     setTimeout(() => setSavedFeedback(false), 2000);
   };
@@ -139,30 +156,29 @@ export const AddressManagerModal: React.FC<AddressManagerModalProps> = ({
                       isDark ? 'text-zinc-400' : 'text-slate-500'
                     }`}
                   >
-                    Nome do local
+                    Nome do local *
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Casa, Trabalho, Galpão..."
+                    placeholder="Ex: Loja, Galpão, Matriz..."
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     className={inputClass}
                   />
                 </div>
-                <AddressInput
-                  label="Endereço"
-                  placeholder="Busque rua ou CEP..."
-                  type="origin"
-                  value={newLocation}
-                  onChange={setNewLocation}
+
+                <AddressRegistrationForm
+                  ref={addressFormRef}
                   theme={theme}
-                  dropdownZIndex={300}
+                  onValidityChange={setIsFormValid}
                 />
+
                 <div className="flex gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setIsAdding(false)}
-                    className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${
+                    onClick={resetAddForm}
+                    disabled={isSaving}
+                    className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors disabled:opacity-50 ${
                       isDark
                         ? 'bg-zinc-800 text-white hover:bg-zinc-700'
                         : 'bg-slate-200 text-slate-900 hover:bg-slate-300'
@@ -173,14 +189,15 @@ export const AddressManagerModal: React.FC<AddressManagerModalProps> = ({
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={!newLocation || !newName.trim()}
-                    className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    disabled={!isFormValid || !newName.trim() || isSaving}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       isDark
                         ? 'bg-white text-black hover:bg-zinc-200'
                         : 'bg-slate-900 text-white hover:bg-slate-800'
                     }`}
                   >
-                    Salvar
+                    {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isSaving ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>
               </div>
@@ -286,6 +303,6 @@ export const AddressManagerModal: React.FC<AddressManagerModalProps> = ({
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
-};
+}

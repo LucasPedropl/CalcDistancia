@@ -9,6 +9,7 @@ import { AddressInput } from '../../../components/AddressInput';
 import { SavedOriginSelect } from '../../../components/SavedOriginSelect';
 
 import { AvailableMotoboysList } from '../../../components/AvailableMotoboysList';
+import { RadiusKmControl } from '../../../components/RadiusKmControl';
 
 import { ArrowLeft, Bike, Loader2, Navigation } from 'lucide-react';
 
@@ -43,6 +44,8 @@ interface ClienteDeliverySetupProps {
   onSelectMotoboy: (id: string | null) => void;
   favoriteMotoboyIds?: string[];
   onToggleFavorite?: (motoboyId: string) => void;
+  motoboySearchRadiusKm?: number;
+  onMotoboySearchRadiusChange?: (radiusKm: number) => void;
   deliveryDistanceKm?: number | null;
   theme?: ThemeMode;
 }
@@ -78,6 +81,8 @@ export function ClienteDeliverySetup({
   onSelectMotoboy,
   favoriteMotoboyIds,
   onToggleFavorite,
+  motoboySearchRadiusKm = 15,
+  onMotoboySearchRadiusChange,
   deliveryDistanceKm = null,
   theme = 'light',
 }: ClienteDeliverySetupProps) {
@@ -229,6 +234,18 @@ export function ClienteDeliverySetup({
             Opcional: selecione um motoboy para envio direto
 
           </p>
+
+          {onMotoboySearchRadiusChange && (
+            <div className="mb-4">
+              <RadiusKmControl
+                valueKm={motoboySearchRadiusKm}
+                onChange={onMotoboySearchRadiusChange}
+                theme={theme}
+                label="Raio de busca"
+                hint="Filtra motoboys disponíveis próximos à origem."
+              />
+            </div>
+          )}
 
           <AvailableMotoboysList
             motoboys={motoboys}

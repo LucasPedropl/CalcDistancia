@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Plus, Trash2, Star, CheckCircle, MapPin } from 'lucide-react';
-import { AddressInput } from '../../../components/AddressInput';
-import type { LocationPoint, ThemeMode } from '../../../types';
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Trash2, Star, CheckCircle, MapPin, Loader2 } from 'lucide-react';
+import {
+  AddressRegistrationForm,
+  type AddressRegistrationFormHandle,
+} from '../../../components/AddressRegistrationForm';
+import type { ThemeMode } from '../../../types';
 import {
   getSavedAddresses,
   saveAddress,
@@ -18,10 +21,12 @@ interface AddressSettingsPanelProps {
 
 export function AddressSettingsPanel({ userId, theme, onAddressesChange }: AddressSettingsPanelProps) {
   const isDark = theme === 'dark';
+  const addressFormRef = useRef<AddressRegistrationFormHandle>(null);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [isAdding, setIsAdding] = useState(false);
-  const [newLocation, setNewLocation] = useState<LocationPoint | null>(null);
   const [newName, setNewName] = useState('');
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
 
   const refreshAddresses = () => {
@@ -35,18 +40,29 @@ export function AddressSettingsPanel({ userId, theme, onAddressesChange }: Addre
     refreshAddresses();
   }, [userId]);
 
-  const handleSave = () => {
-    if (!newLocation || !newName.trim()) return;
+  const resetForm = () => {
+    setIsAdding(false);
+    setNewName('');
+    setIsFormValid(false);
+    addressFormRef.current?.reset();
+  };
+
+  const handleSave = async () => {
+    if (!newName.trim() || isSaving) return;
+
+    setIsSaving(true);
+    const location = await addressFormRef.current?.resolveLocation();
+    setIsSaving(false);
+
+    if (!location) return;
 
     saveAddress(userId, {
-      ...newLocation,
-      name: newName,
+      ...location,
+      name: newName.trim(),
       isDefault: addresses.length === 0,
     });
     refreshAddresses();
-    setIsAdding(false);
-    setNewLocation(null);
-    setNewName('');
+    resetForm();
     setSavedFeedback(true);
     setTimeout(() => setSavedFeedback(false), 2000);
   };
@@ -72,7 +88,7 @@ export function AddressSettingsPanel({ userId, theme, onAddressesChange }: Addre
       <div>
         <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Endereços</h2>
         <p className={`mt-1 text-sm ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-          Gerencie os endereços usados como origem nas suas entregas.
+          Cadastre endereços completos com CEP, número e complemento para origem precisa nas entregas.
         </p>
       </div>
 
@@ -107,34 +123,29 @@ export function AddressSettingsPanel({ userId, theme, onAddressesChange }: Addre
                   isDark ? 'text-zinc-400' : 'text-slate-500'
                 }`}
               >
-                Nome do local
+                Nome do local *
               </label>
               <input
                 type="text"
-                placeholder="Ex: Casa, Trabalho, Galpão..."
+                placeholder="Ex: Loja, Galpão, Matriz..."
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 className={inputClass}
               />
             </div>
-            <AddressInput
-              label="Endereço"
-              placeholder="Busque rua ou CEP..."
-              type="destination"
-              value={newLocation}
-              onChange={setNewLocation}
+
+            <AddressRegistrationForm
+              ref={addressFormRef}
               theme={theme}
-              dropdownZIndex={300}
+              onValidityChange={setIsFormValid}
             />
+
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  setIsAdding(false);
-                  setNewLocation(null);
-                  setNewName('');
-                }}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors ${
+                onClick={resetForm}
+                disabled={isSaving}
+                className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors disabled:opacity-50 ${
                   isDark
                     ? 'bg-zinc-800 text-white hover:bg-zinc-700'
                     : 'bg-slate-200 text-slate-900 hover:bg-slate-300'
@@ -145,14 +156,15 @@ export function AddressSettingsPanel({ userId, theme, onAddressesChange }: Addre
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!newLocation || !newName.trim()}
-                className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                disabled={!isFormValid || !newName.trim() || isSaving}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                   isDark
                     ? 'bg-white text-black hover:bg-zinc-200'
                     : 'bg-slate-900 text-white hover:bg-slate-800'
                 }`}
               >
-                Salvar
+                {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isSaving ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>

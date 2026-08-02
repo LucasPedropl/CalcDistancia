@@ -1,6 +1,8 @@
 import type { DeliveryOrder, OrderAssignmentMode, OrderPaymentStatus } from '../types/order';
 import type { LocationPoint } from '../types';
 import { getMotoboyById, updateMotoboyStatus } from './motoboyService';
+import { DEFAULT_MOTOBOY_RADIUS_KM, loadMotoboyProfile } from './motoboyProfileService';
+import { calculateHaversineDistanceKm } from '../utils/distance';
 
 const ORDERS_STORAGE_KEY = 'calc_distancia_orders';
 const ORDERS_UPDATED_EVENT = 'calc-distancia-orders-updated';
@@ -102,6 +104,9 @@ export function getActiveOrderForMotoboy(motoboyId: string): DeliveryOrder | nul
 
 export function getOpenOrdersForMotoboy(motoboyId: string): DeliveryOrder[] {
   const hasActiveOrder = getActiveOrderForMotoboy(motoboyId) !== null;
+  const motoboy = getMotoboyById(motoboyId);
+  const profile = loadMotoboyProfile(motoboyId);
+  const maxRadiusKm = profile?.raioKm ?? DEFAULT_MOTOBOY_RADIUS_KM;
 
   return loadOrdersFromStorage().filter((order) => {
     if (order.status !== 'PENDING') return false;
@@ -110,8 +115,20 @@ export function getOpenOrdersForMotoboy(motoboyId: string): DeliveryOrder[] {
       return order.assignmentMode === 'DIRECT' && order.targetMotoboyId === motoboyId;
     }
 
-    if (order.assignmentMode === 'BROADCAST') return true;
-    return order.targetMotoboyId === motoboyId;
+    const matchesAssignment =
+      order.assignmentMode === 'BROADCAST' || order.targetMotoboyId === motoboyId;
+    if (!matchesAssignment) return false;
+
+    if (!motoboy) return true;
+
+    const distanceToOriginKm = calculateHaversineDistanceKm(
+      motoboy.lat,
+      motoboy.lng,
+      order.origin.lat,
+      order.origin.lng,
+    );
+
+    return distanceToOriginKm <= maxRadiusKm;
   });
 }
 

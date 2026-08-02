@@ -1,4 +1,4 @@
-import { getMotoboyById } from './motoboyService';
+import { getMotoboyById, DEMO_MOTOBOY_IDS } from './motoboyService';
 import { loadMotoboyProfile } from './motoboyProfileService';
 import { normalizePhoneToE164 } from '../utils/phoneValidation';
 
@@ -55,7 +55,7 @@ export function parseMotoboyQrPayload(raw: string): MotoboyQrPayload | null {
 
 export function findMotoboyByPhone(phone: string): MotoboyQrPayload | null {
   const normalized = normalizePhoneToE164(phone).replace(/\D/g, '');
-  const demoIds = ['mb-001', 'mb-002', 'mb-003', 'mb-004', 'mb-005', 'mb-006'];
+  const demoIds = DEMO_MOTOBOY_IDS;
 
   for (const id of demoIds) {
     const profile = loadMotoboyProfile(id);
@@ -71,7 +71,7 @@ export function findMotoboyByPhone(phone: string): MotoboyQrPayload | null {
 
 export function findMotoboyByCpf(cpf: string): MotoboyQrPayload | null {
   const clean = cpf.replace(/\D/g, '');
-  const demoIds = ['mb-001', 'mb-002', 'mb-003', 'mb-004', 'mb-005', 'mb-006'];
+  const demoIds = DEMO_MOTOBOY_IDS;
 
   for (const id of demoIds) {
     const profile = loadMotoboyProfile(id);

@@ -4,6 +4,7 @@ import type { MotoboyWithDistance } from '../../../services/motoboyService';
 import type { SavedAddress } from '../../../services/addressService';
 import { SavedOriginSelect } from '../../../components/SavedOriginSelect';
 import { AvailableMotoboysList } from '../../../components/AvailableMotoboysList';
+import { RadiusKmControl } from '../../../components/RadiusKmControl';
 import { ClienteActiveOrderCard } from './ClienteActiveOrderCard';
 import { formatDistanceKm } from '../../../utils/distance';
 import { Bike, Plus } from 'lucide-react';
@@ -20,6 +21,8 @@ interface ClienteHomeSidebarProps {
   onSendToSelected: () => void;
   favoriteMotoboyIds?: string[];
   onToggleFavorite?: (motoboyId: string) => void;
+  motoboySearchRadiusKm?: number;
+  onMotoboySearchRadiusChange?: (radiusKm: number) => void;
   clientActiveOrder?: DeliveryOrder | null;
   onViewActiveOrder?: () => void;
   onCancelActiveOrder?: () => void;
@@ -40,6 +43,8 @@ export function ClienteHomeSidebar({
   onSendToSelected,
   favoriteMotoboyIds,
   onToggleFavorite,
+  motoboySearchRadiusKm = 15,
+  onMotoboySearchRadiusChange,
   clientActiveOrder = null,
   onViewActiveOrder,
   onCancelActiveOrder,
@@ -101,6 +106,16 @@ export function ClienteHomeSidebar({
           <span className="text-xs font-semibold uppercase tracking-wider">Próximos de você</span>
 
         </div>
+
+        {onMotoboySearchRadiusChange && (
+          <RadiusKmControl
+            valueKm={motoboySearchRadiusKm}
+            onChange={onMotoboySearchRadiusChange}
+            theme={theme}
+            label="Raio de busca"
+            hint="Exibe apenas motoboys dentro deste raio a partir da sua origem."
+          />
+        )}
 
         <AvailableMotoboysList
           motoboys={motoboys}

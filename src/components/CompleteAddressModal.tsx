@@ -1,26 +1,30 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { ThemeMode } from '../types';
-import type { ReverseGeocodeResult } from '../services/geocodingService';
+import type { LocationPoint, ThemeMode } from '../types';
 import { geocodeLocationWithNumber } from '../services/geocodingService';
-import type { LocationPoint } from '../types';
 import { MapPin, X, Loader2 } from 'lucide-react';
 
-interface DestinationAddressModalProps {
+interface CompleteAddressModalProps {
   isOpen: boolean;
-  base: ReverseGeocodeResult | null;
+  base: LocationPoint | null;
   theme?: ThemeMode;
+  title?: string;
+  subtitle?: string;
+  confirmLabel?: string;
   onClose: () => void;
-  onConfirm: (destination: LocationPoint) => void;
+  onConfirm: (location: LocationPoint) => void;
 }
 
-export function DestinationAddressModal({
+export function CompleteAddressModal({
   isOpen,
   base,
   theme = 'light',
+  title = 'Complete o endereço',
+  subtitle = 'Informe o número para localização precisa',
+  confirmLabel = 'Confirmar endereço',
   onClose,
   onConfirm,
-}: DestinationAddressModalProps) {
+}: CompleteAddressModalProps) {
   const isDark = theme === 'dark';
   const [number, setNumber] = useState('');
   const [complement, setComplement] = useState('');
@@ -34,9 +38,11 @@ export function DestinationAddressModal({
       setError(null);
       setIsGeocoding(false);
     }
-  }, [isOpen, base?.lat, base?.lng]);
+  }, [isOpen, base?.lat, base?.lng, base?.address]);
 
   if (!isOpen || !base) return null;
+
+  const streetLabel = base.address.split(',')[0]?.trim() || base.address;
 
   const handleConfirm = async () => {
     if (!number.trim()) {
@@ -48,16 +54,7 @@ export function DestinationAddressModal({
     setError(null);
 
     try {
-      const partial: LocationPoint = {
-        address: base.street,
-        lat: base.lat,
-        lng: base.lng,
-        city: base.city,
-        state: base.state,
-        district: base.district,
-        cep: base.cep,
-      };
-      const resolved = await geocodeLocationWithNumber(partial, number, complement);
+      const resolved = await geocodeLocationWithNumber(base, number, complement);
       onConfirm(resolved);
       onClose();
     } catch {
@@ -84,16 +81,15 @@ export function DestinationAddressModal({
               <MapPin className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold">Destino no mapa</h3>
-              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-                Complete número e complemento
-              </p>
+              <h3 className="text-lg font-bold">{title}</h3>
+              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{subtitle}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className={`cursor-pointer rounded-lg p-1.5 transition-colors ${
+            disabled={isGeocoding}
+            className={`cursor-pointer rounded-lg p-1.5 transition-colors disabled:opacity-50 ${
               isDark ? 'text-zinc-400 hover:bg-zinc-900 hover:text-white' : 'text-slate-400 hover:bg-slate-100'
             }`}
           >
@@ -110,11 +106,11 @@ export function DestinationAddressModal({
                 isDark ? 'text-zinc-500' : 'text-slate-500'
               }`}
             >
-              Local identificado
+              Logradouro
             </span>
-            <p className="mt-1 text-sm font-semibold">{base.street}</p>
+            <p className="mt-1 text-sm font-semibold">{streetLabel}</p>
             <p className={`mt-1 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
-              {[base.district, base.city, base.state].filter(Boolean).join(' · ') || base.displayName}
+              {[base.district, base.city, base.state].filter(Boolean).join(' · ')}
             </p>
             {base.cep && (
               <p className={`mt-1 text-xs ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>CEP: {base.cep}</p>
@@ -124,12 +120,12 @@ export function DestinationAddressModal({
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
               <span className={`mb-1.5 block text-xs font-semibold ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
-                Número
+                Número *
               </span>
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="Ex: 120"
+                placeholder="Ex: 231"
                 value={number}
                 onChange={(e) => {
                   setNumber(e.target.value);
@@ -176,12 +172,15 @@ export function DestinationAddressModal({
             }`}
           >
             {isGeocoding && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isGeocoding ? 'Localizando...' : 'Confirmar destino'}
+            {isGeocoding ? 'Localizando...' : confirmLabel}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className={`cursor-pointer py-2 text-xs ${isDark ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+            disabled={isGeocoding}
+            className={`cursor-pointer py-2 text-xs disabled:opacity-50 ${
+              isDark ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+            }`}
           >
             Cancelar
           </button>
