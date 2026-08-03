@@ -3,8 +3,8 @@ import type { DeliveryOrder } from '../../../types/order';
 import type { MotoboyWithDistance } from '../../../services/motoboyService';
 import type { SavedAddress } from '../../../services/addressService';
 import type { AddressFormFields } from '../../../types/addressForm';
-import { AddressInput } from '../../../components/AddressInput';
-import { OriginAddressButton } from '../../../components/OriginAddressButton';
+import { SavedOriginSelect } from '../../../components/SavedOriginSelect';
+import { DestinationAddressButton } from '../../../components/DestinationAddressButton';
 import { AvailableMotoboysList } from '../../../components/AvailableMotoboysList';
 import { RadiusKmControl } from '../../../components/RadiusKmControl';
 import { ClienteActiveOrderCard } from './ClienteActiveOrderCard';
@@ -15,11 +15,12 @@ interface ClienteHomeSidebarProps {
   origin: SavedAddress | null;
   userId: string;
   onUpdateOrigin: (address: SavedAddress | null) => void;
+  onOpenSettings: () => void;
   destination: LocationPoint | null;
   onUpdateDestination: (loc: LocationPoint | null) => void;
-  isOriginModalOpen?: boolean;
-  onOriginModalOpenChange?: (open: boolean) => void;
-  originFormInitial?: Partial<AddressFormFields>;
+  isDestinationModalOpen?: boolean;
+  onDestinationModalOpenChange?: (open: boolean) => void;
+  destinationFormInitial?: Partial<AddressFormFields>;
   motoboys: MotoboyWithDistance[];
   selectedMotoboyId: string | null;
   onSelectMotoboy: (motoboyId: string | null) => void;
@@ -40,11 +41,12 @@ export function ClienteHomeSidebar({
   origin,
   userId,
   onUpdateOrigin,
+  onOpenSettings,
   destination,
   onUpdateDestination,
-  isOriginModalOpen,
-  onOriginModalOpenChange,
-  originFormInitial,
+  isDestinationModalOpen,
+  onDestinationModalOpenChange,
+  destinationFormInitial,
   motoboys,
   selectedMotoboyId,
   onSelectMotoboy,
@@ -76,27 +78,27 @@ export function ClienteHomeSidebar({
         </p>
 
         <div className="mt-4 space-y-3">
-          <OriginAddressButton
+          <SavedOriginSelect
+            label="Origem"
+            placeholder="Selecione um endereço cadastrado..."
             value={origin}
             onChange={onUpdateOrigin}
             userId={userId}
             theme={theme}
-            initialFields={originFormInitial}
-            isModalOpen={isOriginModalOpen}
-            onModalOpenChange={onOriginModalOpenChange}
+            onOpenSettings={onOpenSettings}
           />
 
-          <AddressInput
-            label="Destino"
-            placeholder="Informe o destino ou CEP..."
+          <DestinationAddressButton
             value={destination}
             onChange={onUpdateDestination}
-            type="destination"
             theme={theme}
+            initialFields={destinationFormInitial}
+            isModalOpen={isDestinationModalOpen}
+            onModalOpenChange={onDestinationModalOpenChange}
           />
 
           <p className={`text-[11px] leading-relaxed ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
-            Ou clique com o <strong>botão direito</strong> no mapa para marcar origem ou destino.
+            Ou clique com o <strong>botão direito</strong> no mapa para marcar o destino.
           </p>
         </div>
       </div>

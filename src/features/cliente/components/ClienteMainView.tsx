@@ -13,12 +13,12 @@ interface ClienteMainViewProps {
   origin: SavedAddress | null;
   userId: string;
   onUpdateOrigin: (address: SavedAddress | null) => void;
+  onOpenSettings: () => void;
   destination: LocationPoint | null;
   onUpdateDestination: (loc: LocationPoint | null) => void;
-  isOriginModalOpen?: boolean;
-  onOriginModalOpenChange?: (open: boolean) => void;
-  originFormInitial?: Partial<AddressFormFields>;
-  onOpenSettings: () => void;
+  isDestinationModalOpen?: boolean;
+  onDestinationModalOpenChange?: (open: boolean) => void;
+  destinationFormInitial?: Partial<AddressFormFields>;
   motoboys: MotoboyWithDistance[];
   selectedMotoboyId: string | null;
   onSelectMotoboy: (motoboyId: string | null) => void;
@@ -44,12 +44,12 @@ export function ClienteMainView({
   origin,
   userId,
   onUpdateOrigin,
+  onOpenSettings,
   destination,
   onUpdateDestination,
-  isOriginModalOpen,
-  onOriginModalOpenChange,
-  originFormInitial,
-  onOpenSettings,
+  isDestinationModalOpen,
+  onDestinationModalOpenChange,
+  destinationFormInitial,
   motoboys,
   selectedMotoboyId,
   onSelectMotoboy,
@@ -104,11 +104,12 @@ export function ClienteMainView({
             origin={origin}
             userId={userId}
             onUpdateOrigin={onUpdateOrigin}
+            onOpenSettings={onOpenSettings}
             destination={destination}
             onUpdateDestination={onUpdateDestination}
-            isOriginModalOpen={isOriginModalOpen}
-            onOriginModalOpenChange={onOriginModalOpenChange}
-            originFormInitial={originFormInitial}
+            isDestinationModalOpen={isDestinationModalOpen}
+            onDestinationModalOpenChange={onDestinationModalOpenChange}
+            destinationFormInitial={destinationFormInitial}
             motoboys={motoboys}
             selectedMotoboyId={selectedMotoboyId}
             onSelectMotoboy={onSelectMotoboy}

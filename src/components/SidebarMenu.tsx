@@ -3,8 +3,8 @@ import type { LocationPoint, RouteData, PriceTier, ThemeMode } from '../types';
 import type { DeliveryOrder } from '../types/order';
 import type { MotoboyWithDistance } from '../services/motoboyService';
 import type { SavedAddress } from '../services/addressService';
-import { AddressInput } from './AddressInput';
 import { SavedOriginSelect } from './SavedOriginSelect';
+import { DestinationAddressButton } from './DestinationAddressButton';
 import { AvailableMotoboysList } from './AvailableMotoboysList';
 import { formatCurrency, getPriceForDistance, getTierForDistance } from '../services/pricingService';
 import { formatDurationMinutes } from '../utils/formatDuration';
@@ -84,12 +84,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
             theme={theme}
             onOpenSettings={onOpenSettings}
           />
-          <AddressInput
-            label="Destino ou CEP"
-            placeholder="Informe o destino..."
+          <DestinationAddressButton
             value={routeData.destination}
             onChange={onUpdateDestination}
-            type="destination"
             theme={theme}
           />
         </div>

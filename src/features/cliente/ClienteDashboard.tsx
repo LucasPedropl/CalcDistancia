@@ -104,8 +104,8 @@ export function ClienteDashboard() {
   const [mapPickLoading, setMapPickLoading] = useState(false);
   const [mapPickTarget, setMapPickTarget] = useState<MapPickTarget | null>(null);
   const [destinationGeocodeBase, setDestinationGeocodeBase] = useState<ReverseGeocodeResult | null>(null);
-  const [originFormInitial, setOriginFormInitial] = useState<Partial<AddressFormFields> | undefined>();
-  const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
+  const [destinationFormInitial, setDestinationFormInitial] = useState<Partial<AddressFormFields> | undefined>();
+  const [isDestinationModalOpen, setIsDestinationModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -237,10 +237,10 @@ export function ClienteDashboard() {
     setShowRouteView(true);
   };
 
-  const handleOriginModalOpenChange = (open: boolean) => {
-    setIsOriginModalOpen(open);
+  const handleDestinationModalOpenChange = (open: boolean) => {
+    setIsDestinationModalOpen(open);
     if (!open) {
-      setOriginFormInitial(undefined);
+      setDestinationFormInitial(undefined);
     }
   };
 
@@ -364,11 +364,11 @@ export function ClienteDashboard() {
       setMapContextMenu(null);
 
       if (target === 'origin') {
-        setOriginFormInitial(reverseGeocodeToOriginFields(base));
-        setIsOriginModalOpen(true);
-        showToast('Complete o endereço de origem no formulário.', 'info');
+        showToast('A origem deve ser um endereço cadastrado. Selecione na lista acima.', 'info');
       } else {
-        setDestinationGeocodeBase(base);
+        setDestinationFormInitial(reverseGeocodeToOriginFields(base));
+        setIsDestinationModalOpen(true);
+        showToast('Complete o endereço de destino no formulário.', 'info');
       }
     } catch {
       showToast('Não foi possível identificar o endereço. Tente outro ponto no mapa.', 'info');
@@ -408,12 +408,12 @@ export function ClienteDashboard() {
           origin={origin}
           userId={user.id}
           onUpdateOrigin={handleUpdateOrigin}
+          onOpenSettings={() => handleOpenSettings('addresses')}
           destination={destination}
           onUpdateDestination={handleUpdateDestination}
-          isOriginModalOpen={isOriginModalOpen}
-          onOriginModalOpenChange={handleOriginModalOpenChange}
-          originFormInitial={originFormInitial}
-          onOpenSettings={() => handleOpenSettings('profile')}
+          isDestinationModalOpen={isDestinationModalOpen}
+          onDestinationModalOpenChange={handleDestinationModalOpenChange}
+          destinationFormInitial={destinationFormInitial}
           motoboys={homeMotoboys}
           selectedMotoboyId={selectedMotoboyId}
           onSelectMotoboy={setSelectedMotoboyId}

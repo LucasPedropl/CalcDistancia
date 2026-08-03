@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { ThemeMode } from '../types';
 import type { LocationPoint } from '../types';
 import {
@@ -7,8 +7,13 @@ import {
   isAddressFormValid,
   type AddressFormFields,
 } from '../types/addressForm';
-import { formatCepMask, geocodeAddressForm, lookupCep } from '../services/geocodingService';
-import { AlertCircle, Loader2, MapPin } from 'lucide-react';
+import {
+  formatCepMask,
+  geocodeAddressForm,
+  lookupCep,
+  searchAddressOrCep,
+} from '../services/geocodingService';
+import { AlertCircle, Loader2, MapPin, Navigation } from 'lucide-react';
 
 export interface AddressRegistrationFormHandle {
   resolveLocation: () => Promise<LocationPoint | null>;
@@ -20,13 +25,18 @@ interface AddressRegistrationFormProps {
   theme?: ThemeMode;
   initialFields?: Partial<AddressFormFields>;
   onValidityChange?: (isValid: boolean) => void;
+  enableStreetSearch?: boolean;
 }
 
 export const AddressRegistrationForm = forwardRef<
   AddressRegistrationFormHandle,
   AddressRegistrationFormProps
->(function AddressRegistrationForm({ theme = 'light', initialFields, onValidityChange }, ref) {
+>(function AddressRegistrationForm(
+  { theme = 'light', initialFields, onValidityChange, enableStreetSearch = false },
+  ref,
+) {
   const isDark = theme === 'dark';
+  const streetContainerRef = useRef<HTMLDivElement>(null);
   const [fields, setFields] = useState<AddressFormFields>({
     ...EMPTY_ADDRESS_FORM,
     ...initialFields,
@@ -35,6 +45,9 @@ export const AddressRegistrationForm = forwardRef<
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [streetSuggestions, setStreetSuggestions] = useState<LocationPoint[]>([]);
+  const [isStreetSearchLoading, setIsStreetSearchLoading] = useState(false);
+  const [isStreetSearchOpen, setIsStreetSearchOpen] = useState(false);
 
   const isValid = isAddressFormValid(fields);
 
@@ -47,6 +60,42 @@ export const AddressRegistrationForm = forwardRef<
       setFields((prev) => ({ ...prev, ...initialFields }));
     }
   }, [initialFields]);
+
+  useEffect(() => {
+    if (!enableStreetSearch) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        streetContainerRef.current &&
+        !streetContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsStreetSearchOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [enableStreetSearch]);
+
+  useEffect(() => {
+    if (!enableStreetSearch || !isStreetSearchOpen) return;
+
+    const query = fields.street.trim();
+    if (query.length < 3) {
+      setStreetSuggestions([]);
+      setIsStreetSearchLoading(false);
+      return;
+    }
+
+    setIsStreetSearchLoading(true);
+    const timer = setTimeout(async () => {
+      const results = await searchAddressOrCep(query);
+      setStreetSuggestions(results);
+      setIsStreetSearchLoading(false);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [enableStreetSearch, fields.street, isStreetSearchOpen]);
 
   const updateField = <K extends keyof AddressFormFields>(key: K, value: AddressFormFields[K]) => {
     setFields((prev) => ({ ...prev, [key]: value }));
@@ -116,6 +165,20 @@ export const AddressRegistrationForm = forwardRef<
     },
   }));
 
+  const handleStreetSuggestionSelect = (location: LocationPoint) => {
+    setFields((prev) => ({
+      ...prev,
+      street: location.address.split(',')[0]?.trim() || location.address,
+      district: location.district || prev.district,
+      city: location.city || prev.city,
+      state: location.state || prev.state,
+      cep: location.cep ? formatCepMask(location.cep) : prev.cep,
+    }));
+    setIsStreetSearchOpen(false);
+    setStreetSuggestions([]);
+    setFormError(null);
+  };
+
   const labelClass = `mb-1.5 block text-xs font-semibold uppercase tracking-wider ${
     isDark ? 'text-zinc-400' : 'text-slate-500'
   }`;
@@ -159,16 +222,71 @@ export const AddressRegistrationForm = forwardRef<
         </label>
       </div>
 
-      <label className="block">
+      <div ref={streetContainerRef} className="relative block">
         <span className={labelClass}>Rua / Logradouro *</span>
         <input
           type="text"
           placeholder="Ex: Rua Dona Quita"
           value={fields.street}
-          onChange={(e) => updateField('street', e.target.value)}
+          onChange={(e) => {
+            updateField('street', e.target.value);
+            if (enableStreetSearch) setIsStreetSearchOpen(true);
+          }}
+          onFocus={() => {
+            if (enableStreetSearch) setIsStreetSearchOpen(true);
+          }}
           className={inputClass}
         />
-      </label>
+        {enableStreetSearch && isStreetSearchOpen && fields.street.trim().length >= 3 && (
+          <div
+            className={`absolute left-0 right-0 top-full z-50 mt-2 max-h-56 overflow-y-auto rounded-xl border shadow-2xl ${
+              isDark ? 'border-zinc-800 bg-zinc-950' : 'border-slate-200 bg-white shadow-slate-300/50'
+            }`}
+          >
+            <div
+              className={`border-b px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider ${
+                isDark ? 'border-zinc-800 bg-zinc-900/60 text-zinc-400' : 'border-slate-100 bg-slate-50 text-slate-500'
+              }`}
+            >
+              {isStreetSearchLoading ? 'Buscando...' : 'Endereços encontrados'}
+            </div>
+            {streetSuggestions.length === 0 && !isStreetSearchLoading ? (
+              <p className={`p-4 text-center text-sm ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+                Nenhum endereço encontrado.
+              </p>
+            ) : (
+              streetSuggestions.map((item, index) => (
+                <button
+                  key={`${item.address}-${index}`}
+                  type="button"
+                  onClick={() => handleStreetSuggestionSelect(item)}
+                  className={`flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors last:border-b-0 ${
+                    isDark ? 'border-zinc-900 hover:bg-zinc-900' : 'border-slate-100 hover:bg-slate-50'
+                  }`}
+                >
+                  <div
+                    className={`mt-0.5 shrink-0 rounded-full p-2 ${
+                      isDark ? 'bg-zinc-900 text-zinc-300' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {item.cep ? <Navigation className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {item.address}
+                    </p>
+                    <p className={`mt-0.5 truncate text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
+                      {[item.district, item.city, item.state, item.cep ? `CEP ${item.cep}` : '']
+                        .filter(Boolean)
+                        .join(' • ')}
+                    </p>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block">

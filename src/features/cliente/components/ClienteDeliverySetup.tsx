@@ -4,9 +4,8 @@ import type { MotoboyWithDistance } from '../../../services/motoboyService';
 
 import type { SavedAddress } from '../../../services/addressService';
 
-import { AddressInput } from '../../../components/AddressInput';
-
 import { SavedOriginSelect } from '../../../components/SavedOriginSelect';
+import { DestinationAddressButton } from '../../../components/DestinationAddressButton';
 
 import { AvailableMotoboysList } from '../../../components/AvailableMotoboysList';
 import { RadiusKmControl } from '../../../components/RadiusKmControl';
@@ -163,22 +162,10 @@ export function ClienteDeliverySetup({
 
         />
 
-        <AddressInput
-
-          label="Destino ou CEP"
-
-          placeholder="Informe o destino..."
-
+        <DestinationAddressButton
           value={destination}
-
           onChange={onUpdateDestination}
-
-          type="destination"
-
           theme={theme}
-
-          autoFocus
-
         />
 
         <p className={`text-[11px] leading-relaxed ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
