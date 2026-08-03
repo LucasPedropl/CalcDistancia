@@ -5,16 +5,21 @@ import {
   createEmptyPriceTier,
   formatTierPriceSummary,
 } from '../services/pricingService';
+import { RadiusKmControl } from './RadiusKmControl';
+import { DEFAULT_MOTOBOY_RADIUS_KM } from '../services/motoboyProfileService';
 import { DollarSign, Plus, Save, Trash2, X } from 'lucide-react';
 
 interface PriceConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
   tiers: PriceTier[];
-  onTiersUpdated: (newTiers: PriceTier[]) => void;
+  onTiersUpdated: (newTiers: PriceTier[], meta?: { maxTripKm?: number }) => void;
   theme?: ThemeMode;
   /** When true, last tier is always open-ended (per-km optional). */
   allowPerKmTier?: boolean;
+  /** Motoboy: max distance willing to travel for a single trip. */
+  showMaxTripDistance?: boolean;
+  maxTripKm?: number;
 }
 
 export const PriceConfigModal: React.FC<PriceConfigModalProps> = ({
@@ -24,13 +29,19 @@ export const PriceConfigModal: React.FC<PriceConfigModalProps> = ({
   onTiersUpdated,
   theme = 'light',
   allowPerKmTier = true,
+  showMaxTripDistance = false,
+  maxTripKm = DEFAULT_MOTOBOY_RADIUS_KM,
 }) => {
   const [editedTiers, setEditedTiers] = useState<PriceTier[]>(tiers);
+  const [editedMaxTripKm, setEditedMaxTripKm] = useState(maxTripKm);
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    if (isOpen) setEditedTiers(tiers);
-  }, [isOpen, tiers]);
+    if (isOpen) {
+      setEditedTiers(tiers);
+      setEditedMaxTripKm(maxTripKm);
+    }
+  }, [isOpen, tiers, maxTripKm]);
 
   if (!isOpen) return null;
 
@@ -74,7 +85,10 @@ export const PriceConfigModal: React.FC<PriceConfigModalProps> = ({
         return { ...tier, label: buildTierLabel(tier.minKm, tier.maxKm) };
       });
 
-    onTiersUpdated(normalized);
+    onTiersUpdated(
+      normalized,
+      showMaxTripDistance ? { maxTripKm: editedMaxTripKm } : undefined,
+    );
     onClose();
   };
 
@@ -111,6 +125,23 @@ export const PriceConfigModal: React.FC<PriceConfigModalProps> = ({
         </div>
 
         <div className="max-h-[55vh] space-y-3 overflow-y-auto p-6">
+          {showMaxTripDistance ? (
+            <div
+              className={`rounded-xl border p-4 ${isDark ? 'border-zinc-800 bg-zinc-900/40' : 'border-slate-200 bg-slate-50'}`}
+            >
+              <p className={`mb-3 text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                Distância máxima da corrida
+              </p>
+              <RadiusKmControl
+                valueKm={editedMaxTripKm}
+                onChange={setEditedMaxTripKm}
+                theme={theme}
+                label="Aceito corridas de até"
+                hint="Pedidos com origem além deste raio a partir da sua posição não aparecerão para você."
+              />
+            </div>
+          ) : null}
+
           {editedTiers.map((tier, index) => {
             const isOpenEnded = tier.maxKm === null;
             const isLast = index === editedTiers.length - 1;

@@ -18,15 +18,19 @@ export interface AddressRegistrationFormHandle {
 
 interface AddressRegistrationFormProps {
   theme?: ThemeMode;
+  initialFields?: Partial<AddressFormFields>;
   onValidityChange?: (isValid: boolean) => void;
 }
 
 export const AddressRegistrationForm = forwardRef<
   AddressRegistrationFormHandle,
   AddressRegistrationFormProps
->(function AddressRegistrationForm({ theme = 'light', onValidityChange }, ref) {
+>(function AddressRegistrationForm({ theme = 'light', initialFields, onValidityChange }, ref) {
   const isDark = theme === 'dark';
-  const [fields, setFields] = useState<AddressFormFields>(EMPTY_ADDRESS_FORM);
+  const [fields, setFields] = useState<AddressFormFields>({
+    ...EMPTY_ADDRESS_FORM,
+    ...initialFields,
+  });
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
@@ -37,6 +41,12 @@ export const AddressRegistrationForm = forwardRef<
   useEffect(() => {
     onValidityChange?.(isValid);
   }, [isValid, onValidityChange]);
+
+  useEffect(() => {
+    if (initialFields) {
+      setFields((prev) => ({ ...prev, ...initialFields }));
+    }
+  }, [initialFields]);
 
   const updateField = <K extends keyof AddressFormFields>(key: K, value: AddressFormFields[K]) => {
     setFields((prev) => ({ ...prev, [key]: value }));

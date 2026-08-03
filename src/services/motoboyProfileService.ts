@@ -18,6 +18,22 @@ export interface MotoboyProfile {
 
 const PROFILE_KEY = 'calc_distancia_motoboy_profile';
 
+function migrateLegacyMotoboyProfile(profile: MotoboyProfile): MotoboyProfile {
+  const isLegacyBeloHorizonte =
+    profile.estado === 'MG' ||
+    profile.cidade.toLowerCase().includes('belo horizonte');
+
+  if (!isLegacyBeloHorizonte) return profile;
+
+  const demo = DEMO_MOTOBOY_PROFILES[profile.motoboyId];
+  return {
+    ...profile,
+    cidade: demo?.cidade ?? 'São Mateus',
+    estado: demo?.estado ?? 'ES',
+    bairro: demo?.bairro ?? profile.bairro,
+  };
+}
+
 /** Perfis demo pré-cadastrados (São Mateus, ES). Usados quando não há dados no localStorage. */
 export const DEMO_MOTOBOY_PROFILES: Record<string, MotoboyProfile> = {
   'mb-001': {
@@ -104,17 +120,112 @@ export const DEMO_MOTOBOY_PROFILES: Record<string, MotoboyProfile> = {
     bairro: 'Laranja da Terra',
     raioKm: 15,
   },
+  'mb-007': {
+    motoboyId: 'mb-007',
+    nome: 'Lucas Oliveira',
+    telefone: '(27) 99321-0987',
+    email: 'lucas@exemplo.com',
+    placa: 'STU7M56',
+    cidade: 'São Mateus',
+    estado: 'ES',
+    veiculo: 'MOTO',
+    publico: true,
+    cpf: '70819234567',
+    bairro: 'Guriri Norte',
+    raioKm: 18,
+  },
+  'mb-008': {
+    motoboyId: 'mb-008',
+    nome: 'Beatriz Santos',
+    telefone: '(27) 99210-9876',
+    email: 'beatriz@exemplo.com',
+    placa: 'VWX8N78',
+    cidade: 'São Mateus',
+    estado: 'ES',
+    veiculo: 'MOTO',
+    publico: true,
+    cpf: '80921345678',
+    bairro: 'Guriri Sul',
+    raioKm: 14,
+  },
+  'mb-009': {
+    motoboyId: 'mb-009',
+    nome: 'Thiago Alves',
+    telefone: '(27) 99109-8765',
+    email: 'thiago@exemplo.com',
+    placa: 'YZA9P90',
+    cidade: 'São Mateus',
+    estado: 'ES',
+    veiculo: 'MOTO',
+    publico: true,
+    cpf: '91032456789',
+    bairro: 'Centro',
+    raioKm: 12,
+  },
+  'mb-010': {
+    motoboyId: 'mb-010',
+    nome: 'Juliana Rocha',
+    telefone: '(27) 99098-7654',
+    email: 'juliana@exemplo.com',
+    placa: 'BCD0Q12',
+    cidade: 'São Mateus',
+    estado: 'ES',
+    veiculo: 'CARRO',
+    publico: true,
+    cpf: '02143567890',
+    bairro: 'Sernamby',
+    raioKm: 20,
+  },
+  'mb-011': {
+    motoboyId: 'mb-011',
+    nome: 'Rafael Gomes',
+    telefone: '(27) 98987-6543',
+    email: 'rafael@exemplo.com',
+    placa: 'EFG1R34',
+    cidade: 'São Mateus',
+    estado: 'ES',
+    veiculo: 'MOTO',
+    publico: true,
+    cpf: '13254678901',
+    bairro: 'Guriri',
+    raioKm: 16,
+  },
+  'mb-012': {
+    motoboyId: 'mb-012',
+    nome: 'Patrícia Nunes',
+    telefone: '(27) 98876-5432',
+    email: 'patricia@exemplo.com',
+    placa: 'HIJ2S56',
+    cidade: 'São Mateus',
+    estado: 'ES',
+    veiculo: 'MOTO',
+    publico: true,
+    cpf: '24365789012',
+    bairro: 'Boa Vista',
+    raioKm: 11,
+  },
 };
 
 export function loadMotoboyProfile(motoboyId: string): MotoboyProfile | null {
   try {
     const raw = localStorage.getItem(`${PROFILE_KEY}_${motoboyId}`);
     if (raw) {
-      const parsed = JSON.parse(raw) as MotoboyProfile;
-      return {
-        ...parsed,
-        raioKm: parsed.raioKm ?? DEFAULT_MOTOBOY_RADIUS_KM,
+      const stored = JSON.parse(raw) as MotoboyProfile;
+      const migrated = migrateLegacyMotoboyProfile(stored);
+      const profile = {
+        ...migrated,
+        raioKm: migrated.raioKm ?? DEFAULT_MOTOBOY_RADIUS_KM,
       };
+
+      if (
+        profile.cidade !== stored.cidade ||
+        profile.estado !== stored.estado ||
+        profile.bairro !== stored.bairro
+      ) {
+        saveMotoboyProfile(profile);
+      }
+
+      return profile;
     }
   } catch {
     // fallback para perfil demo

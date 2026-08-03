@@ -5,6 +5,9 @@ import type { ThemeMode } from '../../../types';
 import type { LocationPoint } from '../../../types';
 import type { MotoboyWithDistance } from '../../../services/motoboyService';
 import { MapRightClickHandler } from '../../../components/map/MapRightClickHandler';
+import { MapViewportSync } from '../../../components/map/MapViewportSync';
+import { useMapViewport } from '../../../hooks/useMapViewport';
+import { BRAZIL_MAP_VIEWPORT } from '../../../utils/mapViewport';
 
 delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -12,8 +15,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
-
-const DEFAULT_CENTER = { lat: -19.9173, lng: -43.9345 };
 
 const svgBike = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>`;
 
@@ -37,7 +38,7 @@ export function ClienteHomeMap({
   theme = 'light',
 }: ClienteHomeMapProps) {
   const isDark = theme === 'dark';
-  const center = origin ?? DEFAULT_CENTER;
+  const { viewport } = useMapViewport(origin);
 
   const tileUrl = isDark
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -68,11 +69,12 @@ export function ClienteHomeMap({
   return (
     <div className={`h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
       <MapContainer
-        center={[center.lat, center.lng]}
-        zoom={13}
+        center={[BRAZIL_MAP_VIEWPORT.lat, BRAZIL_MAP_VIEWPORT.lng]}
+        zoom={BRAZIL_MAP_VIEWPORT.zoom}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
+        <MapViewportSync viewport={viewport} />
         <TileLayer
           attribution="&copy; OpenStreetMap"
           url={tileUrl}

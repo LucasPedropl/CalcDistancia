@@ -2,8 +2,12 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation } from 'lucide-react';
 import L from 'leaflet';
-import type { ThemeMode } from '../../../types';
 import type { DeliveryOrder } from '../../../types/order';
+import type { ThemeMode } from '../../../types';
+import { DEFAULT_REFERENCE_LOCATION } from '../../../services/motoboyService';
+import { MapViewportSync } from '../../../components/map/MapViewportSync';
+import { useMapViewport } from '../../../hooks/useMapViewport';
+import { BRAZIL_MAP_VIEWPORT } from '../../../utils/mapViewport';
 
 delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -11,8 +15,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
-
-const MOTOBOY_MY_LOCATION = { lat: -19.9173, lng: -43.9345 };
 
 const svgBike = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>`;
 const svgPackage = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>`;
@@ -24,6 +26,12 @@ interface MotoboyMapProps {
 
 export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
   const isDark = theme === 'dark';
+  const motoboyPosition = {
+    lat: DEFAULT_REFERENCE_LOCATION.lat,
+    lng: DEFAULT_REFERENCE_LOCATION.lng,
+    address: DEFAULT_REFERENCE_LOCATION.address,
+  };
+  const { viewport } = useMapViewport(motoboyPosition);
 
   const tileUrl = isDark
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -54,11 +62,12 @@ export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
   return (
     <div className={`h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
       <MapContainer
-        center={[MOTOBOY_MY_LOCATION.lat, MOTOBOY_MY_LOCATION.lng]}
-        zoom={13}
+        center={[BRAZIL_MAP_VIEWPORT.lat, BRAZIL_MAP_VIEWPORT.lng]}
+        zoom={BRAZIL_MAP_VIEWPORT.zoom}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
+        <MapViewportSync viewport={viewport} />
         <TileLayer
           attribution="&copy; OpenStreetMap"
           url={tileUrl}
@@ -66,7 +75,7 @@ export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
           maxZoom={19}
         />
 
-        <Marker position={[MOTOBOY_MY_LOCATION.lat, MOTOBOY_MY_LOCATION.lng]} icon={myLocationIcon}>
+        <Marker position={[motoboyPosition.lat, motoboyPosition.lng]} icon={myLocationIcon}>
           <Popup className={isDark ? 'dark-popup' : ''}>
             <div className="p-1 text-sm">
               <p className="flex items-center gap-1 font-bold">

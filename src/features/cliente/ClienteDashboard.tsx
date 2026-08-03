@@ -20,23 +20,19 @@ import { buildRouteDataFromOrder } from '../../utils/orderRoute';
 import { useAuth } from '../../context/AuthContext';
 import { getSavedAddresses, type SavedAddress } from '../../services/addressService';
 import { loadLastOrigin, saveLastOrigin, loadFavoriteMotoboyIds, toggleFavoriteMotoboy, loadMotoboySearchRadiusKm, saveMotoboySearchRadiusKm } from '../../services/clientStateService';
+import type { AddressFormFields } from '../../types/addressForm';
+import type { MapPickTarget } from '../../components/MapDestinationContextMenu';
 
 import { ClienteMainView } from './components/ClienteMainView';
-import { ClienteDeliverySetup } from './components/ClienteDeliverySetup';
-import { ClienteHomeMap } from './components/ClienteHomeMap';
 import { ClienteSettingsView, type SettingsSection } from './components/ClienteSettingsView';
 import { Screen2MainView } from '../../components/Screen2MainView';
-import { HeaderNav } from '../../components/HeaderNav';
-import { AppViewport } from '../../components/layout/AppViewport';
-import { ResponsiveMapShell } from '../../components/layout/ResponsiveMapShell';
-import { RouteMap } from '../../components/RouteMap';
-import { OrderModal } from '../../components/OrderModal';
 import { MapDestinationContextMenu } from '../../components/MapDestinationContextMenu';
 import { DestinationAddressModal } from '../../components/DestinationAddressModal';
+import { OrderModal } from '../../components/OrderModal';
 import { OrderChatWidget } from '../../components/chat/OrderChatWidget';
 import { CheckCircle } from 'lucide-react';
 
-type ClientViewMode = 'HOME' | 'DELIVERY' | 'SETTINGS';
+type ClientViewMode = 'MAIN' | 'SETTINGS';
 
 function resolveSavedOrigin(userId: string, point: LocationPoint | SavedAddress | null): SavedAddress | null {
   if (!point) return null;
@@ -52,14 +48,27 @@ function resolveSavedOrigin(userId: string, point: LocationPoint | SavedAddress 
   return byAddress ?? null;
 }
 
+function reverseGeocodeToOriginFields(base: ReverseGeocodeResult): Partial<AddressFormFields> {
+  return {
+    cep: base.cep ?? '',
+    street: base.street,
+    district: base.district ?? '',
+    city: base.city ?? '',
+    state: base.state ?? '',
+    number: '',
+    complement: '',
+  };
+}
+
 export function ClienteDashboard() {
   const { user, logout } = useAuth();
-  const [viewMode, setViewMode] = useState<ClientViewMode>('HOME');
+  const [viewMode, setViewMode] = useState<ClientViewMode>('MAIN');
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile');
   const [origin, setOrigin] = useState<SavedAddress | null>(null);
   const [destination, setDestination] = useState<LocationPoint | null>(null);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [isRouteLoading, setIsRouteLoading] = useState(false);
+  const [showRouteView, setShowRouteView] = useState(false);
   const [originLoaded, setOriginLoaded] = useState(false);
 
   const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
@@ -92,8 +101,11 @@ export function ClienteDashboard() {
     x: number;
     y: number;
   } | null>(null);
+  const [mapPickLoading, setMapPickLoading] = useState(false);
+  const [mapPickTarget, setMapPickTarget] = useState<MapPickTarget | null>(null);
   const [destinationGeocodeBase, setDestinationGeocodeBase] = useState<ReverseGeocodeResult | null>(null);
-  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
+  const [originFormInitial, setOriginFormInitial] = useState<Partial<AddressFormFields> | undefined>();
+  const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -153,7 +165,7 @@ export function ClienteDashboard() {
   useEffect(() => {
     let isCurrent = true;
 
-    if (viewMode === 'DELIVERY' && origin && destination) {
+    if (viewMode === 'MAIN' && origin && destination) {
       setIsRouteLoading(true);
       fetchRealRoadRoute(origin, destination).then((data) => {
         if (isCurrent) {
@@ -164,6 +176,7 @@ export function ClienteDashboard() {
     } else if (!destination) {
       setRouteData(null);
       setIsRouteLoading(false);
+      setShowRouteView(false);
     }
 
     return () => {
@@ -183,40 +196,19 @@ export function ClienteDashboard() {
     }
   };
 
-  const handleStartDelivery = () => {
-    if (!origin) {
-      handleOpenSettings('addresses');
-      return;
+  const handleUpdateDestination = (loc: LocationPoint | null) => {
+    setDestination(loc);
+    if (!loc) {
+      setShowRouteView(false);
     }
-    if (clientActiveOrder) {
-      openActiveOrderView(clientActiveOrder);
-      return;
-    }
-    setDestination(null);
-    setRouteData(null);
-    setViewMode('DELIVERY');
-  };
-
-  const handleSendToSelected = () => {
-    if (!origin) {
-      handleOpenSettings('addresses');
-      return;
-    }
-    if (!selectedMotoboyId) return;
-    if (clientActiveOrder) {
-      openActiveOrderView(clientActiveOrder);
-      return;
-    }
-    setDestination(null);
-    setRouteData(null);
-    setViewMode('DELIVERY');
   };
 
   const openActiveOrderView = (order: NonNullable<typeof clientActiveOrder>) => {
     setOrigin(order.origin as SavedAddress);
     setDestination(order.destination);
     setRouteData(buildRouteDataFromOrder(order));
-    setViewMode('DELIVERY');
+    setShowRouteView(true);
+    setViewMode('MAIN');
   };
 
   const handleCancelActiveOrder = () => {
@@ -231,21 +223,33 @@ export function ClienteDashboard() {
     cancelOrder(clientActiveOrder.id, 'CLIENT');
     setDestination(null);
     setRouteData(null);
-    setViewMode('HOME');
+    setShowRouteView(false);
+    setViewMode('MAIN');
     showToast('Pedido cancelado.', 'info');
   };
 
-  const handleCalculateRoute = () => {
-    if (origin && destination && routeData) {
-      showToast('Rota calculada com sucesso!', 'success');
+  const handleStartRide = () => {
+    if (clientActiveOrder) {
+      openActiveOrderView(clientActiveOrder);
+      return;
+    }
+    if (!origin || !destination || !routeData || isRouteLoading) return;
+    setShowRouteView(true);
+  };
+
+  const handleOriginModalOpenChange = (open: boolean) => {
+    setIsOriginModalOpen(open);
+    if (!open) {
+      setOriginFormInitial(undefined);
     }
   };
 
-  const handleBackToHome = () => {
+  const handleNewOrder = () => {
     setDestination(null);
     setRouteData(null);
+    setShowRouteView(false);
     setSelectedMotoboyId(null);
-    setViewMode('HOME');
+    setViewMode('MAIN');
   };
 
   const handleConfirmPedido = (price: number | null, tier?: PriceTier) => {
@@ -334,7 +338,7 @@ export function ClienteDashboard() {
 
   const handleLogout = () => {
     logout();
-    handleBackToHome();
+    handleNewOrder();
     setOrigin(null);
     setOriginLoaded(false);
   };
@@ -350,18 +354,28 @@ export function ClienteDashboard() {
     setMapContextMenu({ lat, lng, x: clientX, y: clientY });
   };
 
-  const handleConfirmMapDestinationPick = async () => {
+  const handleMapPick = async (target: MapPickTarget) => {
     if (!mapContextMenu) return;
-    setIsReverseGeocoding(true);
+    setMapPickLoading(true);
+    setMapPickTarget(target);
+
     try {
       const base = await reverseGeocode(mapContextMenu.lat, mapContextMenu.lng);
-      setDestinationGeocodeBase(base);
       setMapContextMenu(null);
+
+      if (target === 'origin') {
+        setOriginFormInitial(reverseGeocodeToOriginFields(base));
+        setIsOriginModalOpen(true);
+        showToast('Complete o endereço de origem no formulário.', 'info');
+      } else {
+        setDestinationGeocodeBase(base);
+      }
     } catch {
       showToast('Não foi possível identificar o endereço. Tente outro ponto no mapa.', 'info');
       setMapContextMenu(null);
     } finally {
-      setIsReverseGeocoding(false);
+      setMapPickLoading(false);
+      setMapPickTarget(null);
     }
   };
 
@@ -385,21 +399,24 @@ export function ClienteDashboard() {
   }, [routeData, homeMotoboys, motoboySearchRadiusKm]);
 
   const selectedMotoboy = deliveryMotoboys.find((m) => m.id === selectedMotoboyId);
-  const showDeliveryResult = viewMode === 'DELIVERY' && routeData !== null;
+  const canStartRide = Boolean(origin && destination && routeData && !isRouteLoading);
 
   return (
     <>
-      {viewMode === 'HOME' && user && (
+      {viewMode === 'MAIN' && !showRouteView && user && (
         <ClienteMainView
           origin={origin}
           userId={user.id}
           onUpdateOrigin={handleUpdateOrigin}
+          destination={destination}
+          onUpdateDestination={handleUpdateDestination}
+          isOriginModalOpen={isOriginModalOpen}
+          onOriginModalOpenChange={handleOriginModalOpenChange}
+          originFormInitial={originFormInitial}
           onOpenSettings={() => handleOpenSettings('profile')}
           motoboys={homeMotoboys}
           selectedMotoboyId={selectedMotoboyId}
           onSelectMotoboy={setSelectedMotoboyId}
-          onStartDelivery={handleStartDelivery}
-          onSendToSelected={handleSendToSelected}
           favoriteMotoboyIds={favoriteMotoboyIds}
           onToggleFavorite={handleToggleFavoriteMotoboy}
           motoboySearchRadiusKm={motoboySearchRadiusKm}
@@ -412,6 +429,10 @@ export function ClienteDashboard() {
           clientActiveOrder={clientActiveOrder}
           onViewActiveOrder={clientActiveOrder ? () => openActiveOrderView(clientActiveOrder) : undefined}
           onCancelActiveOrder={clientActiveOrder ? handleCancelActiveOrder : undefined}
+          isRouteLoading={isRouteLoading}
+          canStartRide={canStartRide}
+          onStartRide={handleStartRide}
+          onMapContextMenu={handleMapContextMenu}
         />
       )}
 
@@ -420,7 +441,7 @@ export function ClienteDashboard() {
           theme={theme}
           onToggleTheme={handleToggleTheme}
           onLogout={handleLogout}
-          onBack={() => setViewMode('HOME')}
+          onBack={() => setViewMode('MAIN')}
           userId={user.id}
           userName={user.name}
           userEmail={user.email}
@@ -441,73 +462,7 @@ export function ClienteDashboard() {
         />
       )}
 
-      {viewMode === 'DELIVERY' && !showDeliveryResult && (
-        <AppViewport theme={theme}>
-          <HeaderNav
-            onOpenSettings={() => handleOpenSettings('profile')}
-            theme={theme}
-            onToggleTheme={handleToggleTheme}
-            onLogout={handleLogout}
-            userName={user?.name}
-            userEmail={user?.email}
-            onlineMotoboyCount={homeMotoboys.length}
-            motoboyRegionLabel={origin ? 'na sua região' : 'em São Mateus, ES (demo)'}
-          />
-          <ResponsiveMapShell
-            theme={theme}
-            mapLabel="Mapa"
-            panelLabel="Entrega"
-            defaultMobileView={destination ? 'panel' : 'map'}
-            map={
-              routeData ? (
-                <RouteMap
-                  routeData={routeData}
-                  theme={theme}
-                  availableMotoboys={homeMotoboys}
-                  selectedMotoboyId={selectedMotoboyId}
-                  onMotoboySelect={setSelectedMotoboyId}
-                  onMapContextMenu={handleMapContextMenu}
-                />
-              ) : (
-                <ClienteHomeMap
-                  origin={origin}
-                  motoboys={homeMotoboys}
-                  selectedMotoboyId={selectedMotoboyId}
-                  onMotoboySelect={setSelectedMotoboyId}
-                  onMapContextMenu={handleMapContextMenu}
-                  destination={destination}
-                  theme={theme}
-                />
-              )
-            }
-            panel={
-              <ClienteDeliverySetup
-                origin={origin}
-                userId={user?.id ?? ''}
-                onUpdateOrigin={handleUpdateOrigin}
-                onOpenSettings={() => handleOpenSettings('addresses')}
-                destination={destination}
-                onUpdateDestination={setDestination}
-                onCalculateRoute={handleCalculateRoute}
-                onBack={handleBackToHome}
-                isRouteLoading={isRouteLoading}
-                canCalculate={Boolean(origin && destination && routeData && !isRouteLoading)}
-                motoboys={homeMotoboys}
-                selectedMotoboyId={selectedMotoboyId}
-                onSelectMotoboy={setSelectedMotoboyId}
-                favoriteMotoboyIds={favoriteMotoboyIds}
-                onToggleFavorite={handleToggleFavoriteMotoboy}
-                motoboySearchRadiusKm={motoboySearchRadiusKm}
-                onMotoboySearchRadiusChange={handleMotoboySearchRadiusChange}
-                deliveryDistanceKm={routeData?.distanceKm ?? null}
-                theme={theme}
-              />
-            }
-          />
-        </AppViewport>
-      )}
-
-      {showDeliveryResult && routeData && user && (
+      {showRouteView && routeData && user && (
         <Screen2MainView
           routeData={routeData}
           origin={origin}
@@ -526,7 +481,7 @@ export function ClienteDashboard() {
           selectedMotoboyId={selectedMotoboyId}
           onSelectMotoboy={setSelectedMotoboyId}
           pendingOrder={clientActiveOrder}
-          onNewOrder={handleBackToHome}
+          onNewOrder={handleNewOrder}
           onCancelOrder={clientActiveOrder ? handleCancelActiveOrder : undefined}
           onMapContextMenu={handleMapContextMenu}
         />
@@ -536,10 +491,11 @@ export function ClienteDashboard() {
         <MapDestinationContextMenu
           x={mapContextMenu.x}
           y={mapContextMenu.y}
-          isLoading={isReverseGeocoding}
+          isLoading={mapPickLoading}
+          loadingTarget={mapPickTarget}
           theme={theme}
-          onConfirm={handleConfirmMapDestinationPick}
-          onDismiss={() => !isReverseGeocoding && setMapContextMenu(null)}
+          onPick={handleMapPick}
+          onDismiss={() => !mapPickLoading && setMapContextMenu(null)}
         />
       )}
 

@@ -8,6 +8,11 @@ import {
   loadMotoboyPriceTiers,
   saveMotoboyPriceTiers,
 } from '../../../services/motoboyPricingService';
+import {
+  DEFAULT_MOTOBOY_RADIUS_KM,
+  loadMotoboyProfile,
+  saveMotoboyProfile,
+} from '../../../services/motoboyProfileService';
 import { ArrowLeft, DollarSign, Settings, User } from 'lucide-react';
 
 export type MotoboySettingsSection = 'profile' | 'pricing';
@@ -39,11 +44,22 @@ export function MotoboySettingsView({
   const isDark = theme === 'dark';
   const [activeSection, setActiveSection] = useState<MotoboySettingsSection>(initialSection);
   const [priceTiers, setPriceTiers] = useState<PriceTier[]>(() => loadMotoboyPriceTiers(motoboyId));
+  const [maxTripKm, setMaxTripKm] = useState(
+    () => loadMotoboyProfile(motoboyId)?.raioKm ?? DEFAULT_MOTOBOY_RADIUS_KM,
+  );
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
 
-  const handleTiersUpdated = (tiers: PriceTier[]) => {
+  const handleTiersUpdated = (tiers: PriceTier[], meta?: { maxTripKm?: number }) => {
     saveMotoboyPriceTiers(motoboyId, tiers);
     setPriceTiers(tiers);
+
+    if (meta?.maxTripKm !== undefined) {
+      setMaxTripKm(meta.maxTripKm);
+      const profile = loadMotoboyProfile(motoboyId);
+      if (profile) {
+        saveMotoboyProfile({ ...profile, raioKm: meta.maxTripKm });
+      }
+    }
   };
 
   return (
@@ -142,6 +158,8 @@ export function MotoboySettingsView({
         onTiersUpdated={handleTiersUpdated}
         theme={theme}
         allowPerKmTier
+        showMaxTripDistance
+        maxTripKm={maxTripKm}
       />
     </AppViewport>
   );

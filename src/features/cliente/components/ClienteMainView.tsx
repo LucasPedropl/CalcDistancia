@@ -1,7 +1,8 @@
-import type { ThemeMode } from '../../../types';
+import type { LocationPoint, ThemeMode } from '../../../types';
 import type { DeliveryOrder } from '../../../types/order';
 import type { MotoboyWithDistance } from '../../../services/motoboyService';
 import type { SavedAddress } from '../../../services/addressService';
+import type { AddressFormFields } from '../../../types/addressForm';
 import { HeaderNav } from '../../../components/HeaderNav';
 import { AppViewport } from '../../../components/layout/AppViewport';
 import { ResponsiveMapShell } from '../../../components/layout/ResponsiveMapShell';
@@ -12,12 +13,15 @@ interface ClienteMainViewProps {
   origin: SavedAddress | null;
   userId: string;
   onUpdateOrigin: (address: SavedAddress | null) => void;
+  destination: LocationPoint | null;
+  onUpdateDestination: (loc: LocationPoint | null) => void;
+  isOriginModalOpen?: boolean;
+  onOriginModalOpenChange?: (open: boolean) => void;
+  originFormInitial?: Partial<AddressFormFields>;
   onOpenSettings: () => void;
   motoboys: MotoboyWithDistance[];
   selectedMotoboyId: string | null;
   onSelectMotoboy: (motoboyId: string | null) => void;
-  onStartDelivery: () => void;
-  onSendToSelected: () => void;
   favoriteMotoboyIds?: string[];
   onToggleFavorite?: (motoboyId: string) => void;
   motoboySearchRadiusKm?: number;
@@ -30,18 +34,25 @@ interface ClienteMainViewProps {
   clientActiveOrder?: DeliveryOrder | null;
   onViewActiveOrder?: () => void;
   onCancelActiveOrder?: () => void;
+  isRouteLoading?: boolean;
+  canStartRide?: boolean;
+  onStartRide?: () => void;
+  onMapContextMenu?: (lat: number, lng: number, clientX: number, clientY: number) => void;
 }
 
 export function ClienteMainView({
   origin,
   userId,
   onUpdateOrigin,
+  destination,
+  onUpdateDestination,
+  isOriginModalOpen,
+  onOriginModalOpenChange,
+  originFormInitial,
   onOpenSettings,
   motoboys,
   selectedMotoboyId,
   onSelectMotoboy,
-  onStartDelivery,
-  onSendToSelected,
   favoriteMotoboyIds,
   onToggleFavorite,
   motoboySearchRadiusKm,
@@ -54,6 +65,10 @@ export function ClienteMainView({
   clientActiveOrder = null,
   onViewActiveOrder,
   onCancelActiveOrder,
+  isRouteLoading = false,
+  canStartRide = false,
+  onStartRide,
+  onMapContextMenu,
 }: ClienteMainViewProps) {
   return (
     <AppViewport theme={theme}>
@@ -71,13 +86,16 @@ export function ClienteMainView({
       <ResponsiveMapShell
         theme={theme}
         mapLabel="Mapa"
-        panelLabel="Início"
+        panelLabel="Corrida"
+        defaultMobileView={destination ? 'panel' : 'map'}
         map={
           <ClienteHomeMap
             origin={origin}
             motoboys={motoboys}
             selectedMotoboyId={selectedMotoboyId}
             onMotoboySelect={(id) => onSelectMotoboy(id)}
+            onMapContextMenu={onMapContextMenu}
+            destination={destination}
             theme={theme}
           />
         }
@@ -86,12 +104,14 @@ export function ClienteMainView({
             origin={origin}
             userId={userId}
             onUpdateOrigin={onUpdateOrigin}
-            onOpenSettings={onOpenSettings}
+            destination={destination}
+            onUpdateDestination={onUpdateDestination}
+            isOriginModalOpen={isOriginModalOpen}
+            onOriginModalOpenChange={onOriginModalOpenChange}
+            originFormInitial={originFormInitial}
             motoboys={motoboys}
             selectedMotoboyId={selectedMotoboyId}
             onSelectMotoboy={onSelectMotoboy}
-            onStartDelivery={onStartDelivery}
-            onSendToSelected={onSendToSelected}
             favoriteMotoboyIds={favoriteMotoboyIds}
             onToggleFavorite={onToggleFavorite}
             motoboySearchRadiusKm={motoboySearchRadiusKm}
@@ -99,6 +119,9 @@ export function ClienteMainView({
             clientActiveOrder={clientActiveOrder}
             onViewActiveOrder={onViewActiveOrder}
             onCancelActiveOrder={onCancelActiveOrder}
+            isRouteLoading={isRouteLoading}
+            canStartRide={canStartRide}
+            onStartRide={onStartRide}
             theme={theme}
           />
         }

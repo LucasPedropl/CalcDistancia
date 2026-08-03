@@ -64,7 +64,7 @@ export function MotoboyMainView({
             <Route className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">UaiPDV Entregador</h1>
+            <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">WebMotos</h1>
             {userName && (
               <p className={`truncate text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
                 {isBusy ? `Em corrida · ${activeOrder.id}` : `Olá, ${userName}`}

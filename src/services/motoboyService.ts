@@ -21,6 +21,12 @@ const DEFAULT_MOTOBOYS: AvailableMotoboy[] = [
   { id: 'mb-004', name: 'Ricardo Lima', lat: -18.7080, lng: -39.8520, status: 'ONLINE', vehicle: 'Moto' },
   { id: 'mb-005', name: 'Felipe Souza', lat: -18.7250, lng: -39.8480, status: 'ONLINE', vehicle: 'Moto' },
   { id: 'mb-006', name: 'Carla Mendes', lat: -18.7320, lng: -39.8650, status: 'BUSY', vehicle: 'Moto' },
+  { id: 'mb-007', name: 'Lucas Oliveira', lat: -18.7550, lng: -39.8150, status: 'ONLINE', vehicle: 'Moto' },
+  { id: 'mb-008', name: 'Beatriz Santos', lat: -18.7380, lng: -39.8300, status: 'ONLINE', vehicle: 'Moto' },
+  { id: 'mb-009', name: 'Thiago Alves', lat: -18.7120, lng: -39.8620, status: 'ONLINE', vehicle: 'Moto' },
+  { id: 'mb-010', name: 'Juliana Rocha', lat: -18.7200, lng: -39.8450, status: 'ONLINE', vehicle: 'Carro' },
+  { id: 'mb-011', name: 'Rafael Gomes', lat: -18.7480, lng: -39.8180, status: 'ONLINE', vehicle: 'Moto' },
+  { id: 'mb-012', name: 'Patrícia Nunes', lat: -18.7350, lng: -39.8680, status: 'ONLINE', vehicle: 'Moto' },
 ];
 
 export const DEMO_MOTOBOY_IDS = DEFAULT_MOTOBOYS.map((motoboy) => motoboy.id);
