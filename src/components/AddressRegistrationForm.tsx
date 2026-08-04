@@ -5,6 +5,7 @@ import {
   BRAZILIAN_STATES,
   EMPTY_ADDRESS_FORM,
   isAddressFormValid,
+  normalizeBrazilianStateToUf,
   type AddressFormFields,
 } from '../types/addressForm';
 import {
@@ -171,7 +172,7 @@ export const AddressRegistrationForm = forwardRef<
       street: location.address.split(',')[0]?.trim() || location.address,
       district: location.district || prev.district,
       city: location.city || prev.city,
-      state: location.state || prev.state,
+      state: normalizeBrazilianStateToUf(location.state || prev.state),
       cep: location.cep ? formatCepMask(location.cep) : prev.cep,
     }));
     setIsStreetSearchOpen(false);

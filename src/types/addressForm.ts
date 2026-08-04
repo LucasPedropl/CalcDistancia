@@ -48,6 +48,31 @@ export const BRAZILIAN_STATES = [
   { uf: 'TO', name: 'Tocantins' },
 ] as const;
 
+/** Converte nome completo do estado (Nominatim) ou sigla para UF de 2 letras. */
+export function normalizeBrazilianStateToUf(state: string): string {
+  const trimmed = state.trim();
+  if (!trimmed) return '';
+
+  const upper = trimmed.toUpperCase();
+  if (upper.length === 2 && BRAZILIAN_STATES.some(({ uf }) => uf === upper)) {
+    return upper;
+  }
+
+  const normalizeText = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+  const normalizedInput = normalizeText(trimmed);
+  const match = BRAZILIAN_STATES.find(
+    ({ name }) => normalizeText(name) === normalizedInput,
+  );
+
+  return match?.uf ?? '';
+}
+
 export function isAddressFormValid(fields: AddressFormFields): boolean {
   const cepDigits = fields.cep.replace(/\D/g, '');
   return (

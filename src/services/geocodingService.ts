@@ -1,4 +1,5 @@
 import type { LocationPoint, RouteData } from '../types';
+import { normalizeBrazilianStateToUf } from '../types/addressForm';
 
 // Preset popular locations for instant seamless suggestions
 export const POPULAR_LOCATIONS: LocationPoint[] = [
@@ -108,14 +109,19 @@ export async function searchAddressOrCep(query: string): Promise<LocationPoint[]
     if (nomRes.ok) {
       const data = await nomRes.json();
       data.forEach((item: any) => {
+        const addr = item.address ?? {};
+        const isoState = addr['ISO3166-2-lvl4'] as string | undefined;
+        const rawState =
+          isoState?.startsWith('BR-') ? isoState.slice(3) : (addr.state as string | undefined) ?? '';
+
         results.push({
           address: item.display_name,
           lat: parseFloat(item.lat),
           lng: parseFloat(item.lon),
-          city: item.address?.city || item.address?.town || item.address?.municipality || '',
-          state: item.address?.state || '',
-          district: item.address?.suburb || item.address?.neighbourhood || '',
-          cep: item.address?.postcode || '',
+          city: addr.city || addr.town || addr.municipality || '',
+          state: normalizeBrazilianStateToUf(rawState),
+          district: addr.suburb || addr.neighbourhood || '',
+          cep: addr.postcode || '',
         });
       });
     }
@@ -268,6 +274,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
         address?: Record<string, string>;
       };
       const addr = data.address ?? {};
+      const isoState = addr['ISO3166-2-lvl4'];
+      const rawState =
+        typeof isoState === 'string' && isoState.startsWith('BR-')
+          ? isoState.slice(3)
+          : (addr.state ?? '');
+
       const street =
         addr.road ??
         addr.pedestrian ??
@@ -280,7 +292,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
         street,
         district: addr.suburb ?? addr.neighbourhood ?? addr.quarter ?? '',
         city: addr.city ?? addr.town ?? addr.municipality ?? '',
-        state: addr.state ?? '',
+        state: normalizeBrazilianStateToUf(rawState),
         cep: addr.postcode ?? '',
         displayName: data.display_name ?? street,
         lat,

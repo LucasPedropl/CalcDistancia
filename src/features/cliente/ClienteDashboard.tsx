@@ -20,7 +20,7 @@ import { buildRouteDataFromOrder } from '../../utils/orderRoute';
 import { useAuth } from '../../context/AuthContext';
 import { getSavedAddresses, type SavedAddress } from '../../services/addressService';
 import { loadLastOrigin, saveLastOrigin, loadFavoriteMotoboyIds, toggleFavoriteMotoboy, loadMotoboySearchRadiusKm, saveMotoboySearchRadiusKm } from '../../services/clientStateService';
-import type { AddressFormFields } from '../../types/addressForm';
+import { normalizeBrazilianStateToUf, type AddressFormFields } from '../../types/addressForm';
 import type { MapPickTarget } from '../../components/MapDestinationContextMenu';
 
 import { ClienteMainView } from './components/ClienteMainView';
@@ -54,7 +54,7 @@ function reverseGeocodeToOriginFields(base: ReverseGeocodeResult): Partial<Addre
     street: base.street,
     district: base.district ?? '',
     city: base.city ?? '',
-    state: base.state ?? '',
+    state: normalizeBrazilianStateToUf(base.state ?? ''),
     number: '',
     complement: '',
   };

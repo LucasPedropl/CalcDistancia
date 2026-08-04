@@ -8,6 +8,8 @@ const USER_TYPE_CARDS: Array<{
   title: string;
   description: string;
   accent?: boolean;
+  /** Oculta temporariamente na landing sem remover a configuração. */
+  hidden?: boolean;
 }> = [
   {
     to: '/auth/estabelecimento',
@@ -27,12 +29,14 @@ const USER_TYPE_CARDS: Array<{
     icon: Users,
     title: 'Clientes',
     description: 'Acompanhe suas entregas, autorize recebimentos e receba notificações em tempo real.',
+    hidden: true,
   },
   {
     to: '/auth/condominio',
     icon: Building2,
     title: 'Condomínios',
     description: 'Painel de portaria: autorize entradas, audite acessos e gerencie entregas no condomínio.',
+    hidden: true,
   },
   {
     to: '/auth/admin',
@@ -96,7 +100,7 @@ export const LandingPage = () => {
             </p>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {USER_TYPE_CARDS.map(({ to, icon: Icon, title, description, accent }) => (
+              {USER_TYPE_CARDS.filter((card) => !card.hidden).map(({ to, icon: Icon, title, description, accent }) => (
                 <Link
                   key={to}
                   to={to}
