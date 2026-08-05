@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation } from 'lucide-react';
 import L from 'leaflet';
@@ -6,6 +6,8 @@ import type { DeliveryOrder } from '../../../types/order';
 import type { ThemeMode } from '../../../types';
 import { DEFAULT_REFERENCE_LOCATION } from '../../../services/motoboyService';
 import { MapViewportSync } from '../../../components/map/MapViewportSync';
+import { AdaptiveMapTileLayer } from '../../../components/map/AdaptiveMapTileLayer';
+import { MapProviderToggle } from '../../../components/map/MapProviderToggle';
 import { useMapViewport } from '../../../hooks/useMapViewport';
 import { BRAZIL_MAP_VIEWPORT } from '../../../utils/mapViewport';
 
@@ -33,10 +35,6 @@ export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
   };
   const { viewport } = useMapViewport(motoboyPosition);
 
-  const tileUrl = isDark
-    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
   const myLocationIcon = L.divIcon({
     className: 'custom-motoboy-marker',
     html: `<div style="width: 40px; height: 40px; background-color: ${
@@ -60,7 +58,8 @@ export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
   });
 
   return (
-    <div className={`h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
+    <div className={`relative h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
+      <MapProviderToggle theme={theme} className="absolute left-3 top-3 z-[1000]" />
       <MapContainer
         center={[BRAZIL_MAP_VIEWPORT.lat, BRAZIL_MAP_VIEWPORT.lng]}
         zoom={BRAZIL_MAP_VIEWPORT.zoom}
@@ -68,12 +67,7 @@ export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
         zoomControl={false}
       >
         <MapViewportSync viewport={viewport} />
-        <TileLayer
-          attribution="&copy; OpenStreetMap"
-          url={tileUrl}
-          subdomains={['a', 'b', 'c', 'd']}
-          maxZoom={19}
-        />
+        <AdaptiveMapTileLayer isDark={isDark} />
 
         <Marker position={[motoboyPosition.lat, motoboyPosition.lng]} icon={myLocationIcon}>
           <Popup className={isDark ? 'dark-popup' : ''}>

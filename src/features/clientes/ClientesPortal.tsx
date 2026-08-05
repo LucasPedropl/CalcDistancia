@@ -1,61 +1,145 @@
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Package, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { Package, LogOut, Bell } from 'lucide-react';
+import {
+  loadClientProfile,
+  updateClientHomeAddress,
+  updateClientPhone,
+} from '../../services/clientProfileService';
+import { registerClientAccount } from '../../services/registeredClientService';
+import { cancelOrder } from '../../services/orderService';
+import { useActiveOrderForRecipient } from '../../hooks/useOrders';
+import { useMotoboySimulationTicker } from '../../hooks/useMotoboySimulation';
+import { AppViewport } from '../../components/layout/AppViewport';
+import { ResponsiveMapShell } from '../../components/layout/ResponsiveMapShell';
+import { type AddressRegistrationFormHandle } from '../../components/AddressRegistrationForm';
+import { ClienteTrackingMap } from './components/ClienteTrackingMap';
+import { ClienteOrderChatWidget } from './components/ClienteOrderChatWidget';
+import { ClientePortalSidebar } from './components/ClientePortalSidebar';
 
 export function ClientesPortal() {
   const { user, logout } = useAuth();
+  const [profile, setProfile] = useState(() =>
+    user ? loadClientProfile(user.id) : loadClientProfile(''),
+  );
+  const formRef = useRef<AddressRegistrationFormHandle>(null);
+
+  useMotoboySimulationTicker();
+
+  const activeOrder = useActiveOrderForRecipient(
+    user?.id,
+    profile.phone,
+    profile.homeAddress,
+  );
+
+  if (!user) return null;
+
+  const handleSaveAddress = async () => {
+    const location = await formRef.current?.resolveLocation();
+    if (!location) return;
+
+    const updated = updateClientHomeAddress(user.id, location);
+    setProfile(updated);
+  };
+
+  const handleSavePhone = () => {
+    const updated = updateClientPhone(user.id, profile.phone);
+    setProfile(updated);
+    registerClientAccount({
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      phone: updated.phone,
+    });
+  };
+
+  const handleCancelOrder = () => {
+    if (!activeOrder) return;
+    const confirmed = window.confirm('Deseja cancelar esta entrega?');
+    if (!confirmed) return;
+    cancelOrder(activeOrder.id, 'CLIENT');
+  };
+
+  const needsAddress = !profile.homeAddress;
+  const needsPhone = !profile.phone;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Área do Cliente</p>
-            <h1 className="text-lg font-bold">Olá, {user?.name}</h1>
+    <AppViewport>
+      <header className="relative z-40 flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-white">
+            <Package className="h-5 w-5" />
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
-          </button>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Área do Cliente
+            </p>
+            <h1 className="truncate text-sm font-bold sm:text-lg">Olá, {user.name}</h1>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={logout}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100"
+        >
+          <LogOut className="h-4 w-4" />
+          Sair
+        </button>
       </header>
 
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-900">
-            <Package className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-bold">Acompanhe suas entregas</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-500">
-            Receba notificações quando o motoboy estiver a caminho, autorize a entrada no condomínio
-            e acompanhe o status em tempo real.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-6">
-          <div className="flex items-start gap-3">
-            <Bell className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
-            <div>
-              <p className="text-sm font-semibold text-slate-700">Em desenvolvimento</p>
-              <p className="mt-1 text-sm text-slate-500">
-                O portal do cliente final será expandido na próxima fase, com histórico de pedidos e
-                autorização de recebimento.
-              </p>
+      <ResponsiveMapShell
+        mapLabel="Mapa"
+        panelLabel="Entrega"
+        defaultMobileView={activeOrder ? 'map' : 'panel'}
+        panel={
+          <ClientePortalSidebar
+            profile={profile}
+            needsAddress={needsAddress}
+            needsPhone={needsPhone}
+            activeOrder={activeOrder}
+            formRef={formRef}
+            onSaveAddress={() => void handleSaveAddress()}
+            onSavePhone={handleSavePhone}
+            onPhoneChange={(phone) => setProfile((prev) => ({ ...prev, phone }))}
+            onCancelOrder={handleCancelOrder}
+          />
+        }
+        map={
+          activeOrder ? (
+            <ClienteTrackingMap order={activeOrder} />
+          ) : (
+            <div className="flex h-full min-h-[240px] flex-col items-center justify-center bg-slate-100 p-6 text-center text-slate-500">
+              {profile.homeAddress ? (
+                <>
+                  <p className="text-sm font-medium text-slate-700">Seu endereço cadastrado</p>
+                  <p className="mt-2 max-w-md text-sm">{profile.homeAddress.address}</p>
+                  <p className="mt-3 text-xs">O mapa de rastreamento aparece quando houver entrega ativa.</p>
+                </>
+              ) : (
+                <p className="text-sm">Cadastre seu endereço para começar</p>
+              )}
             </div>
-          </div>
-        </div>
+          )
+        }
+      />
 
-        <p className="text-center text-xs text-slate-400">
-          É um estabelecimento?{' '}
-          <Link to="/auth/estabelecimento" className="font-semibold text-slate-700 underline">
-            Acesse como Estabelecimento
-          </Link>
-        </p>
-      </main>
-    </div>
+      <p className="shrink-0 border-t border-slate-200 bg-white py-2 text-center text-xs text-slate-400">
+        É um estabelecimento?{' '}
+        <Link to="/auth/estabelecimento" className="font-semibold text-slate-700 underline">
+          Acesse como Estabelecimento
+        </Link>
+      </p>
+
+      {activeOrder && (
+        <ClienteOrderChatWidget
+          orderId={activeOrder.id}
+          currentUserId={user.id}
+          currentUserName={user.name}
+          motoboyName={activeOrder.acceptedMotoboyName}
+          establishmentName={activeOrder.clientName}
+        />
+      )}
+    </AppViewport>
   );
 }

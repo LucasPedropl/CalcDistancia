@@ -137,7 +137,7 @@ export const Login = () => {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  UaiPDV Rota
+                  webmottos
                 </p>
                 <h1 className="text-lg font-bold tracking-tight">Acesso {config.label}</h1>
               </div>

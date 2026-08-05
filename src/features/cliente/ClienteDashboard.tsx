@@ -6,9 +6,10 @@ import type {
   ThemeMode,
 } from '../../types';
 import type { OrderAssignmentMode } from '../../types/order';
+import type { DestinationConfirmMeta, DestinationConfirmResult } from '../../types/destination';
 import { fetchRealRoadRoute, reverseGeocode, type ReverseGeocodeResult } from '../../services/geocodingService';
 import { loadSavedPriceTiers, savePriceTiers } from '../../services/pricingService';
-import { createOrder, cancelOrder } from '../../services/orderService';
+import { createOrder, cancelOrder, simulateOrderAcceptance } from '../../services/orderService';
 import { getMotoboysNearLocation, DEFAULT_REFERENCE_LOCATION } from '../../services/motoboyService';
 import {
   pushBroadcastMotoboyNotification,
@@ -16,6 +17,7 @@ import {
 } from '../../services/motoboyNotificationService';
 import { whatsappApi } from '../../services/whatsappApi';
 import { useActiveOrderForClient } from '../../hooks/useOrders';
+import { useMotoboySimulationTicker, useMotoboySimulationRefresh } from '../../hooks/useMotoboySimulation';
 import { buildRouteDataFromOrder } from '../../utils/orderRoute';
 import { useAuth } from '../../context/AuthContext';
 import { getSavedAddresses, type SavedAddress } from '../../services/addressService';
@@ -28,7 +30,9 @@ import { ClienteSettingsView, type SettingsSection } from './components/ClienteS
 import { Screen2MainView } from '../../components/Screen2MainView';
 import { MapDestinationContextMenu } from '../../components/MapDestinationContextMenu';
 import { DestinationAddressModal } from '../../components/DestinationAddressModal';
+import { CondominiumDestinationConfirmModal } from '../../components/CondominiumDestinationConfirmModal';
 import { OrderModal } from '../../components/OrderModal';
+import { formatTrackingWhatsAppFooter } from '../../utils/trackingUrl';
 import { OrderChatWidget } from '../../components/chat/OrderChatWidget';
 import { CheckCircle } from 'lucide-react';
 
@@ -57,6 +61,26 @@ function reverseGeocodeToOriginFields(base: ReverseGeocodeResult): Partial<Addre
     state: normalizeBrazilianStateToUf(base.state ?? ''),
     number: '',
     complement: '',
+  };
+}
+
+function buildDestinationFromMapPick(
+  lat: number,
+  lng: number,
+  base: ReverseGeocodeResult,
+): LocationPoint {
+  const address =
+    [base.street, base.district, base.city, base.state].filter(Boolean).join(', ') ||
+    base.displayName;
+
+  return {
+    lat,
+    lng,
+    address,
+    city: base.city,
+    state: base.state,
+    district: base.district,
+    cep: base.cep,
   };
 }
 
@@ -89,11 +113,17 @@ export function ClienteDashboard() {
   const [selectedMotoboyId, setSelectedMotoboyId] = useState<string | null>(null);
   const [favoriteMotoboyIds, setFavoriteMotoboyIds] = useState<string[]>([]);
   const [motoboySearchRadiusKm, setMotoboySearchRadiusKm] = useState(15);
+  const [destinationMeta, setDestinationMeta] = useState<DestinationConfirmMeta | undefined>();
+  const [isDestinationConfirmed, setIsDestinationConfirmed] = useState(false);
 
   const clientActiveOrder = useActiveOrderForClient(user?.id);
   const acceptedToastShownRef = useRef<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+  const [motoboyMapTick, setMotoboyMapTick] = useState(0);
+
+  useMotoboySimulationTicker();
+  useMotoboySimulationRefresh(() => setMotoboyMapTick((value) => value + 1));
 
   const [mapContextMenu, setMapContextMenu] = useState<{
     lat: number;
@@ -106,6 +136,7 @@ export function ClienteDashboard() {
   const [destinationGeocodeBase, setDestinationGeocodeBase] = useState<ReverseGeocodeResult | null>(null);
   const [destinationFormInitial, setDestinationFormInitial] = useState<Partial<AddressFormFields> | undefined>();
   const [isDestinationModalOpen, setIsDestinationModalOpen] = useState(false);
+  const [pendingCondoDestination, setPendingCondoDestination] = useState<LocationPoint | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -177,12 +208,20 @@ export function ClienteDashboard() {
       setRouteData(null);
       setIsRouteLoading(false);
       setShowRouteView(false);
+      setIsDestinationConfirmed(false);
     }
 
     return () => {
       isCurrent = false;
     };
   }, [origin, destination, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== 'MAIN' || !isDestinationConfirmed || !routeData || !origin || !destination) {
+      return;
+    }
+    setShowRouteView(true);
+  }, [viewMode, isDestinationConfirmed, routeData, origin, destination]);
 
   const handleOpenSettings = (section: SettingsSection = 'profile') => {
     setSettingsSection(section);
@@ -196,19 +235,36 @@ export function ClienteDashboard() {
     }
   };
 
-  const handleUpdateDestination = (loc: LocationPoint | null) => {
-    setDestination(loc);
-    if (!loc) {
+  const handleUpdateDestination = (result: DestinationConfirmResult | null) => {
+    if (!result) {
+      setDestination(null);
+      setDestinationMeta(undefined);
       setShowRouteView(false);
+      setIsDestinationConfirmed(false);
+      return;
     }
+    setDestination(result.destination);
+    setDestinationMeta(result.meta);
+    setIsDestinationConfirmed(true);
   };
 
   const openActiveOrderView = (order: NonNullable<typeof clientActiveOrder>) => {
     setOrigin(order.origin as SavedAddress);
     setDestination(order.destination);
     setRouteData(buildRouteDataFromOrder(order));
+    setIsDestinationConfirmed(true);
     setShowRouteView(true);
     setViewMode('MAIN');
+  };
+
+  const handleSimulateAccept = () => {
+    if (!clientActiveOrder || clientActiveOrder.status !== 'PENDING') return;
+    const accepted = simulateOrderAcceptance(clientActiveOrder.id);
+    if (accepted) {
+      showToast(`${accepted.acceptedMotoboyName} aceitou o pedido (simulado).`, 'success');
+    } else {
+      showToast('Nenhum motoboy disponível para simular o aceite.', 'info');
+    }
   };
 
   const handleCancelActiveOrder = () => {
@@ -222,6 +278,8 @@ export function ClienteDashboard() {
 
     cancelOrder(clientActiveOrder.id, 'CLIENT');
     setDestination(null);
+    setDestinationMeta(undefined);
+    setIsDestinationConfirmed(false);
     setRouteData(null);
     setShowRouteView(false);
     setViewMode('MAIN');
@@ -246,6 +304,8 @@ export function ClienteDashboard() {
 
   const handleNewOrder = () => {
     setDestination(null);
+    setDestinationMeta(undefined);
+    setIsDestinationConfirmed(false);
     setRouteData(null);
     setShowRouteView(false);
     setSelectedMotoboyId(null);
@@ -263,6 +323,8 @@ export function ClienteDashboard() {
 
     const assignmentMode: OrderAssignmentMode = selectedMotoboyId ? 'DIRECT' : 'BROADCAST';
 
+    const clientePhone = trackingPhone.trim();
+
     const order = createOrder({
       clientId: user.id,
       clientName: user.name,
@@ -272,26 +334,26 @@ export function ClienteDashboard() {
       durationMin: routeData.durationMin,
       price: orderPrice,
       tierLabel: orderTier?.label,
-      trackingPhone: trackingPhone || undefined,
+      trackingPhone: clientePhone,
       assignmentMode,
       targetMotoboyId: selectedMotoboyId ?? undefined,
       polyline: routeData.polyline,
+      condominiumId: destinationMeta?.condominiumId,
+      condominiumName: destinationMeta?.condominiumName,
     });
-
-    const clientePhone = trackingPhone.trim() || user.phone || '';
-    const clienteNome = user.name;
 
     try {
       if (clientePhone) {
         await whatsappApi.enviarNotificacaoCliente(
           clientePhone,
-          clienteNome,
-          `📦 *Pedido confirmado!*\n\n` +
+          'Cliente',
+          `📦 *Seu pedido está pronto para entrega!*\n\n` +
             `Origem: ${routeData.origin.address}\n` +
             `Destino: ${routeData.destination.address}\n` +
             `Distância: ${routeData.distanceKm} km\n` +
             (orderPrice !== null ? `Valor: R$ ${orderPrice.toFixed(2)}\n` : '') +
-            `\nAcompanhe o status pelo app.`,
+            `\nAguardando um motoboy aceitar a corrida.\n\n` +
+            formatTrackingWhatsAppFooter(order.trackingCode),
         );
       }
 
@@ -366,9 +428,12 @@ export function ClienteDashboard() {
       if (target === 'origin') {
         showToast('A origem deve ser um endereço cadastrado. Selecione na lista acima.', 'info');
       } else {
+        setDestination(buildDestinationFromMapPick(mapContextMenu.lat, mapContextMenu.lng, base));
+        setDestinationMeta(undefined);
+        setIsDestinationConfirmed(false);
+        setShowRouteView(false);
         setDestinationFormInitial(reverseGeocodeToOriginFields(base));
         setIsDestinationModalOpen(true);
-        showToast('Complete o endereço de destino no formulário.', 'info');
       }
     } catch {
       showToast('Não foi possível identificar o endereço. Tente outro ponto no mapa.', 'info');
@@ -379,8 +444,8 @@ export function ClienteDashboard() {
     }
   };
 
-  const handleDestinationFromMapConfirmed = (loc: LocationPoint) => {
-    setDestination(loc);
+  const handleDestinationFromMapConfirmed = (result: DestinationConfirmResult) => {
+    handleUpdateDestination(result);
     showToast('Destino definido no mapa!', 'success');
   };
 
@@ -388,15 +453,17 @@ export function ClienteDashboard() {
   const isAdmin = user?.role === 'ADMIN';
 
   const homeMotoboys = useMemo(() => {
+    void motoboyMapTick;
     return getMotoboysNearLocation(origin ?? DEFAULT_REFERENCE_LOCATION, {
       radiusKm: motoboySearchRadiusKm,
     });
-  }, [origin, motoboySearchRadiusKm]);
+  }, [origin, motoboySearchRadiusKm, motoboyMapTick]);
 
   const deliveryMotoboys = useMemo(() => {
+    void motoboyMapTick;
     if (!routeData) return homeMotoboys;
     return getMotoboysNearLocation(routeData.origin, { radiusKm: motoboySearchRadiusKm });
-  }, [routeData, homeMotoboys, motoboySearchRadiusKm]);
+  }, [routeData, homeMotoboys, motoboySearchRadiusKm, motoboyMapTick]);
 
   const selectedMotoboy = deliveryMotoboys.find((m) => m.id === selectedMotoboyId);
   const canStartRide = Boolean(origin && destination && routeData && !isRouteLoading);
@@ -430,6 +497,7 @@ export function ClienteDashboard() {
           onViewActiveOrder={clientActiveOrder ? () => openActiveOrderView(clientActiveOrder) : undefined}
           onCancelActiveOrder={clientActiveOrder ? handleCancelActiveOrder : undefined}
           isRouteLoading={isRouteLoading}
+          routePolyline={routeData?.polyline}
           canStartRide={canStartRide}
           onStartRide={handleStartRide}
           onMapContextMenu={handleMapContextMenu}
@@ -468,7 +536,7 @@ export function ClienteDashboard() {
           origin={origin}
           userId={user.id}
           onUpdateOrigin={handleUpdateOrigin}
-          onUpdateDestination={setDestination}
+          onUpdateDestination={handleUpdateDestination}
           onOpenSettings={() => handleOpenSettings('profile')}
           onConfirmPedido={handleConfirmPedido}
           priceTiers={priceTiers}
@@ -484,6 +552,7 @@ export function ClienteDashboard() {
           onNewOrder={handleNewOrder}
           onCancelOrder={clientActiveOrder ? handleCancelActiveOrder : undefined}
           onMapContextMenu={handleMapContextMenu}
+          onSimulateAccept={clientActiveOrder?.status === 'PENDING' ? handleSimulateAccept : undefined}
         />
       )}
 
@@ -505,6 +574,18 @@ export function ClienteDashboard() {
         theme={theme}
         onClose={() => setDestinationGeocodeBase(null)}
         onConfirm={handleDestinationFromMapConfirmed}
+      />
+
+      <CondominiumDestinationConfirmModal
+        isOpen={pendingCondoDestination !== null}
+        destination={pendingCondoDestination}
+        theme={theme}
+        onClose={() => setPendingCondoDestination(null)}
+        onConfirm={(result) => {
+          handleUpdateDestination(result);
+          setPendingCondoDestination(null);
+          showToast('Destino do cliente aplicado.', 'success');
+        }}
       />
 
       <OrderModal

@@ -73,12 +73,37 @@ export function normalizeBrazilianStateToUf(state: string): string {
   return match?.uf ?? '';
 }
 
-export function isAddressFormValid(fields: AddressFormFields): boolean {
+export function isStreetNumberOptionalValue(number: string): boolean {
+  const normalized = number
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+
+  return (
+    normalized.length === 0 ||
+    normalized === 's/n' ||
+    normalized === 'sn' ||
+    normalized === 'sem numero' ||
+    normalized === '-' ||
+    normalized === '0'
+  );
+}
+
+export function isAddressFormValid(
+  fields: AddressFormFields,
+  options?: { numberRequired?: boolean },
+): boolean {
   const cepDigits = fields.cep.replace(/\D/g, '');
+  const numberRequired = options?.numberRequired ?? true;
+  const numberOk = numberRequired
+    ? fields.number.trim().length > 0
+    : true;
+
   return (
     cepDigits.length === 8 &&
     fields.street.trim().length > 0 &&
-    fields.number.trim().length > 0 &&
+    numberOk &&
     fields.district.trim().length > 0 &&
     fields.city.trim().length > 0 &&
     fields.state.trim().length === 2

@@ -1,4 +1,5 @@
 import type { LocationPoint, ThemeMode } from '../../../types';
+import type { DestinationConfirmResult } from '../../../types/destination';
 
 import type { MotoboyWithDistance } from '../../../services/motoboyService';
 
@@ -26,7 +27,7 @@ interface ClienteDeliverySetupProps {
 
   destination: LocationPoint | null;
 
-  onUpdateDestination: (loc: LocationPoint | null) => void;
+  onUpdateDestination: (result: DestinationConfirmResult | null) => void;
 
   onCalculateRoute: () => void;
 

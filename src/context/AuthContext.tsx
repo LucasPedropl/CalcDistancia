@@ -6,6 +6,7 @@ import {
   saveAuthSession,
   type StoredAuthSession,
 } from '../services/sessionService';
+import { registerClientAccount } from '../services/registeredClientService';
 
 export type UserRole = 'ESTABELECIMENTO' | 'MOTOBOY' | 'CLIENTE' | 'CONDOMINIO' | 'ADMIN';
 
@@ -54,6 +55,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const session = createAuthSession(role, email);
     saveAuthSession(session);
     setUser(sessionToUser(session));
+
+    if (role === 'CLIENTE') {
+      registerClientAccount({
+        userId: session.id,
+        name: session.name,
+        email: session.email,
+        phone: session.phone,
+      });
+    }
   };
 
   const logout = () => {

@@ -1,6 +1,7 @@
 import React from 'react';
-import type { LocationPoint, RouteData, PriceTier, ThemeMode } from '../types';
+import type { RouteData, PriceTier, ThemeMode } from '../types';
 import type { DeliveryOrder } from '../types/order';
+import type { DestinationConfirmResult } from '../types/destination';
 import type { MotoboyWithDistance } from '../services/motoboyService';
 import type { SavedAddress } from '../services/addressService';
 import { SavedOriginSelect } from './SavedOriginSelect';
@@ -8,14 +9,14 @@ import { DestinationAddressButton } from './DestinationAddressButton';
 import { AvailableMotoboysList } from './AvailableMotoboysList';
 import { formatCurrency, getPriceForDistance, getTierForDistance } from '../services/pricingService';
 import { formatDurationMinutes } from '../utils/formatDuration';
-import { ChevronRight, Clock, Navigation, DollarSign, Bike, Globe, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { ChevronRight, Clock, Navigation, DollarSign, Bike, Globe, Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
 
 interface SidebarMenuProps {
   routeData: RouteData;
   origin: SavedAddress | null;
   userId: string;
   onUpdateOrigin: (loc: SavedAddress | null) => void;
-  onUpdateDestination: (loc: LocationPoint | null) => void;
+  onUpdateDestination: (result: DestinationConfirmResult | null) => void;
   onOpenSettings: () => void;
   onConfirmPedido: (price: number | null, tier: PriceTier | undefined) => void;
   priceTiers: PriceTier[];
@@ -26,6 +27,7 @@ interface SidebarMenuProps {
   pendingOrder?: DeliveryOrder | null;
   onNewOrder?: () => void;
   onCancelOrder?: () => void;
+  onSimulateAccept?: () => void;
 }
 
 export const SidebarMenu: React.FC<SidebarMenuProps> = ({
@@ -44,6 +46,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
   pendingOrder = null,
   onNewOrder,
   onCancelOrder,
+  onSimulateAccept,
 }) => {
   const isDark = theme === 'dark';
   const matchedTier = getTierForDistance(routeData.distanceKm, priceTiers);
@@ -262,6 +265,20 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
               <Loader2 className="h-5 w-5 animate-spin" />
               Aguardando motoboy...
             </button>
+            {onSimulateAccept && (
+              <button
+                type="button"
+                onClick={onSimulateAccept}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-bold transition-all active:scale-[0.98] ${
+                  isDark
+                    ? 'border-emerald-800 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/50'
+                    : 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                }`}
+              >
+                <Zap className="h-4 w-4" />
+                Simular aceite de motoboy
+              </button>
+            )}
             {onCancelOrder && (
               <button
                 type="button"

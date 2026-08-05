@@ -50,7 +50,7 @@ function buildSimulatedPix(payload: PixPayload): PixResponse {
     pixCopiaECola:
       '00020126580014BR.GOV.BCB.PIX0136123e4567-e89b-12d3-a456-4266141740005204000053039865405' +
       String(Math.round(payload.valor * 100)).padStart(4, '0') +
-      '5802BR5925UaiPDV CalcDistancia6009BELO HORIZONTE62070503***6304DEMO',
+      '5802BR5925webmottos6009BELO HORIZONTE62070503***6304DEMO',
     invoiceId: `sim-${externalCode}`,
     externalCode,
     txid: externalCode,

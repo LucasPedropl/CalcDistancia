@@ -6,8 +6,16 @@ export type OrderPaymentStatus = 'NONE' | 'PENDING' | 'PAID';
 
 export interface DeliveryOrder {
   id: string;
+  /** Estabelecimento (PDV) que criou o pedido */
   clientId: string;
   clientName: string;
+  /** Cliente final que recebe a encomenda */
+  recipientClientId?: string;
+  recipientClientName?: string;
+  recipientClientPhone?: string;
+  /** Condomínio de destino, quando aplicável */
+  condominiumId?: string;
+  condominiumName?: string;
   origin: LocationPoint;
   destination: LocationPoint;
   distanceKm: number;
@@ -15,6 +23,8 @@ export interface DeliveryOrder {
   price: number | null;
   tierLabel?: string;
   trackingPhone?: string;
+  /** Código público para rastreamento em /clientes/{trackingCode} */
+  trackingCode: string;
   status: OrderStatus;
   assignmentMode: OrderAssignmentMode;
   targetMotoboyId?: string;
@@ -29,6 +39,8 @@ export interface DeliveryOrder {
   pixEmv?: string;
   paidAt?: string;
   polyline?: [number, number][];
+  /** Rota do motoboy até a origem (coleta) */
+  pickupPolyline?: [number, number][];
   createdAt: string;
   acceptedAt?: string;
   completedAt?: string;

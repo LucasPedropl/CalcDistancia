@@ -4,10 +4,13 @@ import {
   getAllOrders,
   getActiveOrderForClient,
   getActiveOrderForMotoboy,
+  getActiveOrderForRecipient,
+  getOrdersForCondominium,
   getOpenOrdersForMotoboy,
   getOrderById,
   subscribeToOrders,
 } from '../services/orderService';
+import type { LocationPoint } from '../types';
 
 export function useAllOrders(): DeliveryOrder[] {
   const [orders, setOrders] = useState<DeliveryOrder[]>(() => getAllOrders());
@@ -79,6 +82,51 @@ export function useActiveOrderForClient(clientId: string | undefined): DeliveryO
   }, [refresh]);
 
   return order;
+}
+
+export function useActiveOrderForRecipient(
+  userId: string | undefined,
+  phone?: string,
+  homeAddress?: LocationPoint | null,
+): DeliveryOrder | null {
+  const [order, setOrder] = useState<DeliveryOrder | null>(null);
+
+  const refresh = useCallback(() => {
+    if (!userId) {
+      setOrder(null);
+      return;
+    }
+    setOrder(getActiveOrderForRecipient(userId, phone, homeAddress));
+  }, [userId, phone, homeAddress]);
+
+  useEffect(() => {
+    refresh();
+    return subscribeToOrders(refresh);
+  }, [refresh]);
+
+  return order;
+}
+
+export function useOrdersForCondominium(
+  condominiumUserId: string | undefined,
+  condominiumAddress?: LocationPoint | null,
+): DeliveryOrder[] {
+  const [orders, setOrders] = useState<DeliveryOrder[]>([]);
+
+  const refresh = useCallback(() => {
+    if (!condominiumUserId) {
+      setOrders([]);
+      return;
+    }
+    setOrders(getOrdersForCondominium(condominiumUserId, condominiumAddress));
+  }, [condominiumUserId, condominiumAddress]);
+
+  useEffect(() => {
+    refresh();
+    return subscribeToOrders(refresh);
+  }, [refresh]);
+
+  return orders;
 }
 
 export function useOrderTracker(orderId: string | null): DeliveryOrder | null {

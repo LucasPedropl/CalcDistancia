@@ -3,6 +3,9 @@ import type { RouteData, ThemeMode } from '../types';
 import type { AvailableMotoboy } from '../types/order';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { useMapProvider } from '../hooks/useMapProvider';
+import { removeMapBaseLayer, setMapBaseLayer } from '../services/mapBaseLayerService';
+import { MapProviderToggle } from './map/MapProviderToggle';
 
 interface RouteMapProps {
   routeData: RouteData;
@@ -23,9 +26,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const onMotoboySelectRef = useRef(onMotoboySelect);
   const onMapContextMenuRef = useRef(onMapContextMenu);
+  const { provider } = useMapProvider();
 
   useEffect(() => {
     onMotoboySelectRef.current = onMotoboySelect;
@@ -41,41 +44,49 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     if (leafletMapRef.current) {
       leafletMapRef.current.remove();
       leafletMapRef.current = null;
-      tileLayerRef.current = null;
     }
   };
 
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || leafletMapRef.current) return;
+
+    const { origin } = routeData;
+    const map = L.map(mapContainerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+    }).setView([origin.lat, origin.lng], 13);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    leafletMapRef.current = map;
+
+    return () => {
+      destroyLeafletMap();
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    let cancelled = false;
+
+    void setMapBaseLayer(map, provider, isDark).catch((error) => {
+      if (!cancelled) {
+        console.warn('Falha ao aplicar camada do mapa:', error);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      removeMapBaseLayer(map);
+    };
+  }, [provider, isDark]);
+
+  useEffect(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
 
     const { origin, destination, polyline } = routeData;
-
-    if (!leafletMapRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        zoomControl: false,
-        attributionControl: false,
-      }).setView([origin.lat, origin.lng], 13);
-
-      L.control.zoom({ position: 'bottomright' }).addTo(map);
-      leafletMapRef.current = map;
-    }
-
-    const map = leafletMapRef.current;
-
-    if (tileLayerRef.current) {
-      map.removeLayer(tileLayerRef.current);
-    }
-
-    const tileUrl = isDark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-    const newTileLayer = L.tileLayer(tileUrl, {
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map);
-
-    tileLayerRef.current = newTileLayer;
 
     map.eachLayer((layer) => {
       if (layer instanceof L.Marker || layer instanceof L.Polyline) {
@@ -107,12 +118,12 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
     const originMarker = L.marker([origin.lat, origin.lng], { icon: originIcon }).addTo(map);
     originMarker.bindPopup(
-      `<strong style="color:${isDark ? '#fff' : '#000'};">Origem:</strong><br/>${origin.address}`
+      `<strong style="color:${isDark ? '#fff' : '#000'};">Origem:</strong><br/>${origin.address}`,
     );
 
     const destMarker = L.marker([destination.lat, destination.lng], { icon: destIcon }).addTo(map);
     destMarker.bindPopup(
-      `<strong style="color:${isDark ? '#fff' : '#000'};">Destino:</strong><br/>${destination.address}`
+      `<strong style="color:${isDark ? '#fff' : '#000'};">Destino:</strong><br/>${destination.address}`,
     );
 
     const svgBike = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>`;
@@ -133,7 +144,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
       const mbMarker = L.marker([motoboy.lat, motoboy.lng], { icon: mbIcon }).addTo(map);
       mbMarker.bindPopup(
-        `<strong style="color:${isDark ? '#fff' : '#000'};">${motoboy.name}</strong><br/><span style="color:#10b981; font-weight:bold; font-size:12px;">${motoboy.vehicle} · Disponível</span><br/><span style="font-size:11px; margin-top:4px; display:block;">Clique para selecionar</span>`
+        `<strong style="color:${isDark ? '#fff' : '#000'};">${motoboy.name}</strong><br/><span style="color:#10b981; font-weight:bold; font-size:12px;">${motoboy.vehicle} · Disponível</span><br/><span style="font-size:11px; margin-top:4px; display:block;">Clique para selecionar</span>`,
       );
       mbMarker.on('click', () => {
         onMotoboySelectRef.current?.(motoboy.id);
@@ -174,14 +185,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     };
   }, [onMapContextMenu, routeData]);
 
-  useEffect(() => {
-    return () => {
-      destroyLeafletMap();
-    };
-  }, []);
-
   return (
     <div className={`relative h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
+      <MapProviderToggle theme={theme} className="absolute left-3 top-3 z-[1000]" />
       <div ref={mapContainerRef} className="z-0 h-full w-full" />
     </div>
   );

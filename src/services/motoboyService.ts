@@ -1,5 +1,6 @@
 import type { AvailableMotoboy } from '../types/order';
 import type { LocationPoint } from '../types';
+import { applySimulatedPositions, getSimulatedMotoboyPosition } from './motoboySimulationService';
 import { calculateHaversineDistanceKm } from '../utils/distance';
 import { loadMotoboyProfile } from './motoboyProfileService';
 
@@ -65,17 +66,25 @@ export function updateMotoboyStatus(motoboyId: string, status: AvailableMotoboy[
 }
 
 export function getAvailableMotoboys(): AvailableMotoboy[] {
-  return DEFAULT_MOTOBOYS.map(withResolvedStatus).filter((motoboy) => {
+  const motoboys = DEFAULT_MOTOBOYS.map(withResolvedStatus).filter((motoboy) => {
     if (motoboy.status !== 'ONLINE') return false;
     const profile = loadMotoboyProfile(motoboy.id);
     if (profile && !profile.publico) return false;
     return true;
   });
+
+  return applySimulatedPositions(motoboys);
 }
 
 export function getMotoboyById(motoboyId: string): AvailableMotoboy | undefined {
   const found = DEFAULT_MOTOBOYS.find((motoboy) => motoboy.id === motoboyId);
-  return found ? withResolvedStatus(found) : undefined;
+  if (!found) return undefined;
+
+  const withStatus = withResolvedStatus(found);
+  const simulated = getSimulatedMotoboyPosition(motoboyId);
+  if (!simulated) return withStatus;
+
+  return { ...withStatus, lat: simulated.lat, lng: simulated.lng };
 }
 
 export function searchMotoboys(query: string): AvailableMotoboy[] {

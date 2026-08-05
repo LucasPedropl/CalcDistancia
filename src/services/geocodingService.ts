@@ -1,5 +1,5 @@
 import type { LocationPoint, RouteData } from '../types';
-import { normalizeBrazilianStateToUf } from '../types/addressForm';
+import { isStreetNumberOptionalValue, normalizeBrazilianStateToUf } from '../types/addressForm';
 
 // Preset popular locations for instant seamless suggestions
 export const POPULAR_LOCATIONS: LocationPoint[] = [
@@ -445,7 +445,10 @@ export interface AddressFormInput {
 }
 
 /** Monta LocationPoint geocodificado a partir do formulário completo. */
-export async function geocodeAddressForm(fields: AddressFormInput): Promise<LocationPoint> {
+export async function geocodeAddressForm(
+  fields: AddressFormInput,
+  options?: { allowNoStreetNumber?: boolean },
+): Promise<LocationPoint> {
   const base: LocationPoint = {
     address: fields.street.trim(),
     lat: 0,
@@ -456,7 +459,64 @@ export async function geocodeAddressForm(fields: AddressFormInput): Promise<Loca
     district: fields.district.trim(),
   };
 
+  const skipNumber =
+    options?.allowNoStreetNumber && isStreetNumberOptionalValue(fields.number);
+
+  if (skipNumber) {
+    return geocodeAddressWithoutNumber(fields);
+  }
+
   return geocodeLocationWithNumber(base, fields.number, fields.complement);
+}
+
+async function geocodeAddressWithoutNumber(fields: AddressFormInput): Promise<LocationPoint> {
+  const street = fields.street.trim();
+  const query = [
+    street,
+    fields.district.trim(),
+    fields.city.trim(),
+    fields.state.trim(),
+    formatCepMask(fields.cep),
+    'Brasil',
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=1`,
+      { headers: { 'Accept-Language': 'pt-BR' } },
+    );
+
+    if (response.ok) {
+      const data = (await response.json()) as Array<{ lat: string; lon: string }>;
+      if (data.length > 0) {
+        const address = formatAddressWithNumberParts(
+          street,
+          'S/N',
+          fields.complement,
+          fields.district.trim(),
+          fields.city.trim(),
+          fields.state.trim(),
+          formatCepMask(fields.cep),
+        );
+
+        return {
+          address,
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          city: fields.city.trim(),
+          state: fields.state.trim(),
+          district: fields.district.trim(),
+          cep: formatCepMask(fields.cep),
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Geocode without number failed', error);
+  }
+
+  throw new Error('Endereço não localizado. Confira logradouro, bairro e CEP.');
 }
 
 export function buildDestinationAddress(

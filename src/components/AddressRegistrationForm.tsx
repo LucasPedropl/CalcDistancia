@@ -27,13 +27,17 @@ interface AddressRegistrationFormProps {
   initialFields?: Partial<AddressFormFields>;
   onValidityChange?: (isValid: boolean) => void;
   enableStreetSearch?: boolean;
+  /** Condomínios e logradouros sem número podem omitir ou usar S/N. */
+  numberRequired?: boolean;
+  /** Exibe checkbox "Endereço sem número" (destino). */
+  allowNoStreetNumberToggle?: boolean;
 }
 
 export const AddressRegistrationForm = forwardRef<
   AddressRegistrationFormHandle,
   AddressRegistrationFormProps
 >(function AddressRegistrationForm(
-  { theme = 'light', initialFields, onValidityChange, enableStreetSearch = false },
+  { theme = 'light', initialFields, onValidityChange, enableStreetSearch = false, numberRequired = true, allowNoStreetNumberToggle = false },
   ref,
 ) {
   const isDark = theme === 'dark';
@@ -42,6 +46,7 @@ export const AddressRegistrationForm = forwardRef<
     ...EMPTY_ADDRESS_FORM,
     ...initialFields,
   });
+  const [hasNoStreetNumber, setHasNoStreetNumber] = useState(false);
   const [isCepLoading, setIsCepLoading] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [cepError, setCepError] = useState<string | null>(null);
@@ -50,7 +55,9 @@ export const AddressRegistrationForm = forwardRef<
   const [isStreetSearchLoading, setIsStreetSearchLoading] = useState(false);
   const [isStreetSearchOpen, setIsStreetSearchOpen] = useState(false);
 
-  const isValid = isAddressFormValid(fields);
+  const isValid = isAddressFormValid(fields, {
+    numberRequired: numberRequired && !hasNoStreetNumber,
+  });
 
   useEffect(() => {
     onValidityChange?.(isValid);
@@ -140,15 +147,24 @@ export const AddressRegistrationForm = forwardRef<
   };
 
   useImperativeHandle(ref, () => ({
-    isValid: () => isAddressFormValid(fields),
+    isValid: () => isAddressFormValid(fields, { numberRequired: numberRequired && !hasNoStreetNumber }),
     reset: () => {
       setFields(EMPTY_ADDRESS_FORM);
+      setHasNoStreetNumber(false);
       setCepError(null);
       setFormError(null);
     },
     resolveLocation: async () => {
-      if (!isAddressFormValid(fields)) {
-        setFormError('Preencha CEP, rua, número, bairro, cidade e UF.');
+      const effectiveFields = hasNoStreetNumber
+        ? { ...fields, number: fields.number.trim() || 'S/N' }
+        : fields;
+
+      if (!isAddressFormValid(effectiveFields, { numberRequired: numberRequired && !hasNoStreetNumber })) {
+        setFormError(
+          numberRequired
+            ? 'Preencha CEP, rua, número, bairro, cidade e UF.'
+            : 'Preencha CEP, logradouro, bairro, cidade e UF.',
+        );
         return null;
       }
 
@@ -156,7 +172,9 @@ export const AddressRegistrationForm = forwardRef<
       setFormError(null);
 
       try {
-        return await geocodeAddressForm(fields);
+        return await geocodeAddressForm(effectiveFields, {
+          allowNoStreetNumber: !numberRequired || hasNoStreetNumber,
+        });
       } catch {
         setFormError('Não foi possível localizar o endereço. Verifique os dados informados.');
         return null;
@@ -291,15 +309,42 @@ export const AddressRegistrationForm = forwardRef<
 
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className={labelClass}>Número *</span>
+          <span className={labelClass}>
+            {numberRequired && !hasNoStreetNumber ? 'Número *' : 'Número (opcional)'}
+          </span>
           <input
             type="text"
-            inputMode="numeric"
-            placeholder="Ex: 231"
+            inputMode={numberRequired && !hasNoStreetNumber ? 'numeric' : 'text'}
+            placeholder={hasNoStreetNumber ? 'S/N' : numberRequired ? 'Ex: 231' : 'S/N se não houver'}
             value={fields.number}
             onChange={(e) => updateField('number', e.target.value)}
-            className={inputClass}
+            disabled={hasNoStreetNumber}
+            className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
           />
+          {allowNoStreetNumberToggle && (
+            <label className={`mt-2 flex cursor-pointer items-center gap-2 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
+              <input
+                type="checkbox"
+                checked={hasNoStreetNumber}
+                onChange={(event) => {
+                  const checked = event.target.checked;
+                  setHasNoStreetNumber(checked);
+                  if (checked) {
+                    updateField('number', 'S/N');
+                  } else {
+                    updateField('number', '');
+                  }
+                }}
+                className="size-4 rounded border-slate-300"
+              />
+              Endereço sem número (condomínio, lote, etc.)
+            </label>
+          )}
+          {!allowNoStreetNumberToggle && !numberRequired && (
+            <span className={`mt-1 block text-[11px] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
+              Deixe em branco ou use <strong>S/N</strong> para condomínios sem número na via.
+            </span>
+          )}
         </label>
         <label className="block">
           <span className={labelClass}>Complemento</span>

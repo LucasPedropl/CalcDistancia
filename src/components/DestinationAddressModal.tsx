@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { ThemeMode } from '../types';
+import type { ThemeMode, LocationPoint } from '../types';
+import type { DestinationConfirmResult } from '../types/destination';
 import type { ReverseGeocodeResult } from '../services/geocodingService';
 import { geocodeLocationWithNumber } from '../services/geocodingService';
-import type { LocationPoint } from '../types';
+import { listCondominiumsNearDestination } from '../services/condominiumService';
+import { CondominiumLinkFields } from './CondominiumLinkFields';
 import { MapPin, X, Loader2 } from 'lucide-react';
+
+type ModalStep = 'address' | 'condo';
 
 interface DestinationAddressModalProps {
   isOpen: boolean;
   base: ReverseGeocodeResult | null;
   theme?: ThemeMode;
   onClose: () => void;
-  onConfirm: (destination: LocationPoint) => void;
+  onConfirm: (result: DestinationConfirmResult) => void;
 }
 
 export function DestinationAddressModal({
@@ -22,23 +26,37 @@ export function DestinationAddressModal({
   onConfirm,
 }: DestinationAddressModalProps) {
   const isDark = theme === 'dark';
+  const [step, setStep] = useState<ModalStep>('address');
   const [number, setNumber] = useState('');
   const [complement, setComplement] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedDestination, setResolvedDestination] = useState<LocationPoint | null>(null);
+  const [isCondominiumAddress, setIsCondominiumAddress] = useState(false);
+  const [selectedCondominiumId, setSelectedCondominiumId] = useState<string | null | undefined>(
+    undefined,
+  );
+
+  const nearbyCondominiums = resolvedDestination
+    ? listCondominiumsNearDestination(resolvedDestination)
+    : [];
 
   useEffect(() => {
     if (isOpen) {
+      setStep('address');
       setNumber('');
       setComplement('');
       setError(null);
       setIsGeocoding(false);
+      setResolvedDestination(null);
+      setIsCondominiumAddress(false);
+      setSelectedCondominiumId(undefined);
     }
   }, [isOpen, base?.lat, base?.lng]);
 
   if (!isOpen || !base) return null;
 
-  const handleConfirm = async () => {
+  const handleAddressContinue = async () => {
     if (!number.trim()) {
       setError('Informe o número do endereço.');
       return;
@@ -58,13 +76,41 @@ export function DestinationAddressModal({
         cep: base.cep,
       };
       const resolved = await geocodeLocationWithNumber(partial, number, complement);
-      onConfirm(resolved);
+      const nearby = listCondominiumsNearDestination(resolved);
+
+      if (nearby.length > 0) {
+        setResolvedDestination(resolved);
+        setStep('condo');
+        setIsGeocoding(false);
+        return;
+      }
+
+      onConfirm({ destination: resolved });
       onClose();
     } catch {
       setError('Não foi possível localizar este endereço. Verifique o número informado.');
     } finally {
       setIsGeocoding(false);
     }
+  };
+
+  const handleCondoConfirm = () => {
+    if (!resolvedDestination) return;
+
+    const selectedProfile = nearbyCondominiums.find(
+      (entry) => entry.profile.userId === selectedCondominiumId,
+    )?.profile;
+
+    onConfirm({
+      destination: resolvedDestination,
+      meta: isCondominiumAddress
+        ? {
+            condominiumId: selectedCondominiumId,
+            condominiumName: selectedProfile?.name,
+          }
+        : undefined,
+    });
+    onClose();
   };
 
   return createPortal(
@@ -86,105 +132,97 @@ export function DestinationAddressModal({
             <div>
               <h3 className="text-lg font-bold">Destino no mapa</h3>
               <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-                Complete número e complemento
+                {step === 'address' ? 'Complete número e complemento' : 'Confirme o condomínio'}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`cursor-pointer rounded-lg p-1.5 transition-colors ${
-              isDark ? 'text-zinc-400 hover:bg-zinc-900 hover:text-white' : 'text-slate-400 hover:bg-slate-100'
-            }`}
-          >
+          <button type="button" onClick={onClose} className={`cursor-pointer rounded-lg p-1.5 ${isDark ? 'text-zinc-400' : 'text-slate-400'}`}>
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-4 p-5">
-          <div
-            className={`rounded-xl border p-4 ${isDark ? 'border-zinc-800 bg-zinc-900/50' : 'border-slate-200 bg-slate-50'}`}
-          >
-            <span
-              className={`block text-[10px] font-semibold uppercase tracking-wider ${
-                isDark ? 'text-zinc-500' : 'text-slate-500'
-              }`}
-            >
-              Local identificado
-            </span>
-            <p className="mt-1 text-sm font-semibold">{base.street}</p>
-            <p className={`mt-1 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
-              {[base.district, base.city, base.state].filter(Boolean).join(' · ') || base.displayName}
-            </p>
-            {base.cep && (
-              <p className={`mt-1 text-xs ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>CEP: {base.cep}</p>
-            )}
-          </div>
+          {step === 'address' ? (
+            <>
+              <div className={`rounded-xl border p-4 ${isDark ? 'border-zinc-800 bg-zinc-900/50' : 'border-slate-200 bg-slate-50'}`}>
+                <span className={`block text-[10px] font-semibold uppercase ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
+                  Local identificado
+                </span>
+                <p className="mt-1 text-sm font-semibold">{base.street}</p>
+                <p className={`mt-1 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
+                  {[base.district, base.city, base.state].filter(Boolean).join(' · ') || base.displayName}
+                </p>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className={`mb-1.5 block text-xs font-semibold ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
-                Número
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Ex: 120"
-                value={number}
-                onChange={(e) => {
-                  setNumber(e.target.value);
-                  setError(null);
-                }}
-                autoFocus
-                className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 ${
-                  isDark
-                    ? 'border-zinc-700 bg-zinc-900 text-white placeholder-zinc-500'
-                    : 'border-slate-300 bg-white text-slate-900 placeholder-slate-400'
-                }`}
-              />
-            </label>
-            <label className="block">
-              <span className={`mb-1.5 block text-xs font-semibold ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>
-                Complemento
-              </span>
-              <input
-                type="text"
-                placeholder="Apto, bloco..."
-                value={complement}
-                onChange={(e) => setComplement(e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 ${
-                  isDark
-                    ? 'border-zinc-700 bg-zinc-900 text-white placeholder-zinc-500'
-                    : 'border-slate-300 bg-white text-slate-900 placeholder-slate-400'
-                }`}
-              />
-            </label>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className={`mb-1.5 block text-xs font-semibold ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Número</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ex: 120"
+                    value={number}
+                    onChange={(e) => {
+                      setNumber(e.target.value);
+                      setError(null);
+                    }}
+                    autoFocus
+                    className={`w-full rounded-lg border px-3 py-2.5 text-sm ${isDark ? 'border-zinc-700 bg-zinc-900 text-white' : 'border-slate-300 bg-white'}`}
+                  />
+                </label>
+                <label className="block">
+                  <span className={`mb-1.5 block text-xs font-semibold ${isDark ? 'text-zinc-300' : 'text-slate-700'}`}>Complemento</span>
+                  <input
+                    type="text"
+                    placeholder="Apto, bloco..."
+                    value={complement}
+                    onChange={(e) => setComplement(e.target.value)}
+                    className={`w-full rounded-lg border px-3 py-2.5 text-sm ${isDark ? 'border-zinc-700 bg-zinc-900 text-white' : 'border-slate-300 bg-white'}`}
+                  />
+                </label>
+              </div>
 
-          {error && (
-            <p className={`text-xs font-medium ${isDark ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
+              {error && <p className={`text-xs font-medium ${isDark ? 'text-red-400' : 'text-red-600'}`}>{error}</p>}
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className={`rounded-xl border p-4 text-sm ${isDark ? 'border-zinc-800 bg-zinc-900/50' : 'border-slate-200 bg-slate-50'}`}>
+                <p className="font-semibold">{resolvedDestination?.address}</p>
+              </div>
+              <CondominiumLinkFields
+                nearbyCondominiums={nearbyCondominiums}
+                isCondominiumAddress={isCondominiumAddress}
+                onIsCondominiumAddressChange={setIsCondominiumAddress}
+                selectedCondominiumId={selectedCondominiumId}
+                onSelectedCondominiumIdChange={setSelectedCondominiumId}
+                theme={theme}
+              />
+            </div>
           )}
         </div>
 
         <div className={`flex flex-col gap-2 border-t p-5 ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={isGeocoding}
-            className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-colors disabled:cursor-wait disabled:opacity-70 ${
-              isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-slate-900 text-white hover:bg-slate-800'
-            }`}
-          >
-            {isGeocoding && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isGeocoding ? 'Localizando...' : 'Confirmar destino'}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className={`cursor-pointer py-2 text-xs ${isDark ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
-          >
-            Cancelar
-          </button>
+          {step === 'address' ? (
+            <button
+              type="button"
+              onClick={() => void handleAddressContinue()}
+              disabled={isGeocoding}
+              className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold disabled:opacity-70 ${
+                isDark ? 'bg-white text-black' : 'bg-slate-900 text-white'
+              }`}
+            >
+              {isGeocoding && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isGeocoding ? 'Localizando...' : 'Continuar'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleCondoConfirm}
+              className={`flex w-full rounded-xl py-3 text-sm font-bold ${isDark ? 'bg-white text-black' : 'bg-slate-900 text-white'}`}
+            >
+              Confirmar destino
+            </button>
+          )}
         </div>
       </div>
     </div>,

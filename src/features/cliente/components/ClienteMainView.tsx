@@ -1,5 +1,6 @@
 import type { LocationPoint, ThemeMode } from '../../../types';
 import type { DeliveryOrder } from '../../../types/order';
+import type { DestinationConfirmResult } from '../../../types/destination';
 import type { MotoboyWithDistance } from '../../../services/motoboyService';
 import type { SavedAddress } from '../../../services/addressService';
 import type { AddressFormFields } from '../../../types/addressForm';
@@ -15,7 +16,7 @@ interface ClienteMainViewProps {
   onUpdateOrigin: (address: SavedAddress | null) => void;
   onOpenSettings: () => void;
   destination: LocationPoint | null;
-  onUpdateDestination: (loc: LocationPoint | null) => void;
+  onUpdateDestination: (result: DestinationConfirmResult | null) => void;
   isDestinationModalOpen?: boolean;
   onDestinationModalOpenChange?: (open: boolean) => void;
   destinationFormInitial?: Partial<AddressFormFields>;
@@ -35,6 +36,7 @@ interface ClienteMainViewProps {
   onViewActiveOrder?: () => void;
   onCancelActiveOrder?: () => void;
   isRouteLoading?: boolean;
+  routePolyline?: [number, number][];
   canStartRide?: boolean;
   onStartRide?: () => void;
   onMapContextMenu?: (lat: number, lng: number, clientX: number, clientY: number) => void;
@@ -66,6 +68,7 @@ export function ClienteMainView({
   onViewActiveOrder,
   onCancelActiveOrder,
   isRouteLoading = false,
+  routePolyline,
   canStartRide = false,
   onStartRide,
   onMapContextMenu,
@@ -96,6 +99,8 @@ export function ClienteMainView({
             onMotoboySelect={(id) => onSelectMotoboy(id)}
             onMapContextMenu={onMapContextMenu}
             destination={destination}
+            routePolyline={routePolyline}
+            isRouteLoading={isRouteLoading}
             theme={theme}
           />
         }

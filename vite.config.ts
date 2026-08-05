@@ -13,8 +13,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-icon.svg'],
       manifest: {
-        name: 'UaiPDV Rota',
-        short_name: 'UaiPDV',
+        name: 'webmottos',
+        short_name: 'webmottos',
         description:
           'Sistema de cálculo de distância, preço de rota e gestão de entregas.',
         theme_color: '#f8fafc',

@@ -65,7 +65,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, theme 
                 <Route className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight">UaiPDV Rota</h1>
+                <h1 className="text-xl font-bold tracking-tight">webmottos</h1>
                 <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
                   Controle de acesso ao sistema
                 </p>

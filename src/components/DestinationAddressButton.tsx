@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import type { ThemeMode, LocationPoint } from '../types';
 import type { AddressFormFields } from '../types/addressForm';
+import type { DestinationConfirmResult } from '../types/destination';
 import { DestinationAddressFormModal } from './DestinationAddressFormModal';
 import { ChevronRight, X } from 'lucide-react';
 
 interface DestinationAddressButtonProps {
   value: LocationPoint | null;
-  onChange: (destination: LocationPoint | null) => void;
+  onChange: (result: DestinationConfirmResult | null) => void;
   theme?: ThemeMode;
   initialFields?: Partial<AddressFormFields>;
   isModalOpen?: boolean;
   onModalOpenChange?: (open: boolean) => void;
+  disabled?: boolean;
 }
 
 export function DestinationAddressButton({
@@ -20,6 +22,7 @@ export function DestinationAddressButton({
   initialFields,
   isModalOpen: controlledOpen,
   onModalOpenChange,
+  disabled = false,
 }: DestinationAddressButtonProps) {
   const isDark = theme === 'dark';
   const [internalOpen, setInternalOpen] = useState(false);
@@ -50,8 +53,9 @@ export function DestinationAddressButton({
 
         <button
           type="button"
-          onClick={() => setIsOpen(true)}
-          className={`relative flex w-full items-center rounded-xl border px-3.5 py-3 text-left transition-all ${
+          onClick={() => !disabled && setIsOpen(true)}
+          disabled={disabled}
+          className={`relative flex w-full items-center rounded-xl border px-3.5 py-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
             isDark
               ? 'border-zinc-800 bg-zinc-900 hover:border-zinc-700'
               : 'border-slate-300 bg-white shadow-sm hover:border-slate-400'
@@ -72,10 +76,14 @@ export function DestinationAddressButton({
                   : 'text-slate-400'
             }`}
           >
-            {value ? value.address : 'Toque para informar o destino...'}
+            {disabled
+              ? 'Informe o destino...'
+              : value
+                ? value.address
+                : 'Toque para informar o destino...'}
           </span>
 
-          {value ? (
+          {value && !disabled ? (
             <span
               role="button"
               tabIndex={0}
@@ -106,8 +114,8 @@ export function DestinationAddressButton({
         theme={theme}
         initialFields={initialFields}
         onClose={() => setIsOpen(false)}
-        onConfirm={(destination) => {
-          onChange(destination);
+        onConfirm={(result) => {
+          onChange(result);
           setIsOpen(false);
         }}
       />

@@ -14,6 +14,8 @@ import { getMotoboyById } from '../../services/motoboyService';
 
 import { whatsappApi } from '../../services/whatsappApi';
 
+import { fetchAndSaveOrderPickupRoute } from '../../services/orderRoutePlanning';
+
 import { useActiveOrderForMotoboy, useOpenOrdersForMotoboy } from '../../hooks/useOrders';
 
 import { useOrderRoadRoute } from '../../hooks/useOrderRoadRoute';
@@ -90,36 +92,26 @@ export function MotoboyDashboard() {
 
       setPreviewOrderId(null);
 
+      const motoboyPosition = getMotoboyById(motoboyId);
+      if (motoboyPosition) {
+        void fetchAndSaveOrderPickupRoute(result.id, motoboyPosition.lat, motoboyPosition.lng);
+      }
 
-
-      if (result.trackingPhone) {
-
+      const clientePhone = result.trackingPhone ?? result.recipientClientPhone;
+      if (clientePhone) {
         try {
-
           await whatsappApi.enviarNotificacaoCliente(
-
-            result.trackingPhone,
-
-            result.clientName,
-
-            `🛵 *${motoboyName} aceitou seu pedido!*\n\n` +
-
-              `Pedido: ${result.id}\n` +
-
+            clientePhone,
+            'Cliente',
+            `🛵 *Seu pedido saiu para entrega!*\n\n` +
+              `${motoboyName} aceitou a corrida e está a caminho.\n\n` +
               `Origem: ${result.origin.address}\n` +
-
               `Destino: ${result.destination.address}\n\n` +
-
-              `Seu entregador está a caminho.`,
-
+              formatTrackingWhatsAppFooter(result.trackingCode),
           );
-
         } catch (error) {
-
           console.error('Falha ao notificar cliente via WhatsApp:', error);
-
         }
-
       }
 
     }
@@ -133,12 +125,16 @@ export function MotoboyDashboard() {
     const result = completeOrder(activeOrder.id, motoboyId);
     if (!result) return;
 
-    if (result.trackingPhone) {
+    const clientePhone = result.trackingPhone ?? result.recipientClientPhone;
+    if (clientePhone) {
       try {
         await whatsappApi.enviarNotificacaoCliente(
-          result.trackingPhone,
-          result.clientName,
-          `✅ *Entrega finalizada!*\n\nPedido ${result.id} concluído com sucesso. Obrigado por utilizar o UaiPDV.`,
+          clientePhone,
+          'Cliente',
+          `✅ *Pedido entregue!*\n\n` +
+            `Sua entrega em ${result.destination.address} foi concluída com sucesso.\n` +
+            `Obrigado por utilizar o webmottos!\n\n` +
+            formatTrackingWhatsAppFooter(result.trackingCode),
         );
       } catch (error) {
         console.error('Falha ao notificar cliente:', error);

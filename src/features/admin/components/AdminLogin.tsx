@@ -50,7 +50,7 @@ export function AdminLogin() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Painel Administrativo
                 </p>
-                <h1 className="text-lg font-bold tracking-tight">UaiPDV Rota</h1>
+                <h1 className="text-lg font-bold tracking-tight">webmottos</h1>
               </div>
             </div>
             <p className="text-sm text-slate-400">

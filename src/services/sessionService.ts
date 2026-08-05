@@ -17,6 +17,12 @@ const MOTOBOY_ID_BY_EMAIL: Record<string, string> = {
   'ricardo@exemplo.com': 'mb-004',
   'felipe@exemplo.com': 'mb-005',
   'carla@exemplo.com': 'mb-006',
+  'lucas@exemplo.com': 'mb-007',
+  'beatriz@exemplo.com': 'mb-008',
+  'thiago@exemplo.com': 'mb-009',
+  'juliana@exemplo.com': 'mb-010',
+  'rafael@exemplo.com': 'mb-011',
+  'patricia@exemplo.com': 'mb-012',
 };
 
 /** Migra sessões antigas que usavam CLIENTE para o papel de estabelecimento. */
@@ -80,6 +86,12 @@ export function createAuthSession(role: UserRole, email: string): StoredAuthSess
     'ricardo@exemplo.com': 'Ricardo Lima',
     'felipe@exemplo.com': 'Felipe Souza',
     'carla@exemplo.com': 'Carla Mendes',
+    'lucas@exemplo.com': 'Lucas Oliveira',
+    'beatriz@exemplo.com': 'Beatriz Santos',
+    'thiago@exemplo.com': 'Thiago Alves',
+    'juliana@exemplo.com': 'Juliana Rocha',
+    'rafael@exemplo.com': 'Rafael Gomes',
+    'patricia@exemplo.com': 'Patrícia Nunes',
   };
 
   const roleLabels: Record<UserRole, string> = {

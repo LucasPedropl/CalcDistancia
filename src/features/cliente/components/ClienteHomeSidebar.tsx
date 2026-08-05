@@ -1,5 +1,6 @@
 import type { LocationPoint, ThemeMode } from '../../../types';
 import type { DeliveryOrder } from '../../../types/order';
+import type { DestinationConfirmResult } from '../../../types/destination';
 import type { MotoboyWithDistance } from '../../../services/motoboyService';
 import type { SavedAddress } from '../../../services/addressService';
 import type { AddressFormFields } from '../../../types/addressForm';
@@ -17,7 +18,7 @@ interface ClienteHomeSidebarProps {
   onUpdateOrigin: (address: SavedAddress | null) => void;
   onOpenSettings: () => void;
   destination: LocationPoint | null;
-  onUpdateDestination: (loc: LocationPoint | null) => void;
+  onUpdateDestination: (result: DestinationConfirmResult | null) => void;
   isDestinationModalOpen?: boolean;
   onDestinationModalOpenChange?: (open: boolean) => void;
   destinationFormInitial?: Partial<AddressFormFields>;
@@ -74,13 +75,13 @@ export function ClienteHomeSidebar({
       <div className={`border-b p-6 ${isDark ? 'border-zinc-800 bg-zinc-950/30' : 'border-slate-200 bg-white'}`}>
         <h2 className="text-lg font-bold tracking-tight">Nova corrida</h2>
         <p className={`mt-0.5 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-          Informe origem e destino para ir direto à corrida
+          Informe origem e destino para criar o pedido
         </p>
 
         <div className="mt-4 space-y-3">
           <SavedOriginSelect
             label="Origem"
-            placeholder="Selecione um endereço cadastrado..."
+            placeholder="Selecione o endereço de origem..."
             value={origin}
             onChange={onUpdateOrigin}
             userId={userId}

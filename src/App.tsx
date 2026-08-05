@@ -7,7 +7,8 @@ import { ClienteDashboard } from './features/cliente/ClienteDashboard';
 import { MotoboyDashboard } from './features/motoboys/MotoboyDashboard';
 import { AdminDashboard } from './features/admin/AdminDashboard';
 import { AdminLogin } from './features/admin/components/AdminLogin';
-import { ClientesPortal } from './features/clientes/ClientesPortal';
+import { ClienteOrderTrackingPage } from './features/clientes/ClienteOrderTrackingPage';
+import { ClienteTrackingEntryPage } from './features/clientes/ClienteTrackingEntryPage';
 import { CondominioDashboard } from './features/condominio/CondominioDashboard';
 
 const ProtectedRoute = ({
@@ -92,14 +93,8 @@ export const App = () => {
         }
       />
 
-      <Route
-        path="/clientes/*"
-        element={
-          <ProtectedRoute allowedRoles={['CLIENTE']} loginPath="/auth/clientes">
-            <ClientesPortal />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/clientes" element={<ClienteTrackingEntryPage />} />
+      <Route path="/clientes/:trackingCode" element={<ClienteOrderTrackingPage />} />
 
       <Route
         path="/condominio/*"

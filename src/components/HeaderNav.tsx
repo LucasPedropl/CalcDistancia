@@ -72,7 +72,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         >
           <Route className="h-5 w-5" />
         </div>
-        <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">UaiPDV Rota</h1>
+        <h1 className="truncate text-sm font-bold tracking-tight sm:text-lg">webmottos</h1>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">

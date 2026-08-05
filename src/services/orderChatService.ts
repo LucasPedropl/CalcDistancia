@@ -1,4 +1,4 @@
-export type OrderChatSenderRole = 'CLIENT' | 'MOTOBOY';
+export type OrderChatSenderRole = 'CLIENT' | 'MOTOBOY' | 'ESTABLISHMENT' | 'CONDOMINIO';
 
 export interface OrderChatMessage {
   id: string;

@@ -24,7 +24,7 @@ export function AdminDashboard() {
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Administração
               </p>
-              <h1 className="text-base font-bold">UaiPDV Rota</h1>
+              <h1 className="text-base font-bold">webmottos</h1>
             </div>
           </div>
 

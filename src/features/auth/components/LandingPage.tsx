@@ -25,18 +25,16 @@ const USER_TYPE_CARDS: Array<{
     description: 'Visualize rotas, aceite corridas e gerencie coletas com eficiência.',
   },
   {
-    to: '/auth/clientes',
+    to: '/clientes',
     icon: Users,
     title: 'Clientes',
-    description: 'Acompanhe suas entregas, autorize recebimentos e receba notificações em tempo real.',
-    hidden: true,
+    description: 'Informe o código recebido no WhatsApp e acompanhe sua entrega em tempo real.',
   },
   {
     to: '/auth/condominio',
     icon: Building2,
     title: 'Condomínios',
     description: 'Painel de portaria: autorize entradas, audite acessos e gerencie entregas no condomínio.',
-    hidden: true,
   },
   {
     to: '/auth/admin',
@@ -68,7 +66,7 @@ export const LandingPage = () => {
               <Route className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-bold tracking-tight">UaiPDV Rota</p>
+              <p className="text-sm font-bold tracking-tight">webmottos</p>
               <p className="text-xs text-slate-500">Cálculo de distância e entregas</p>
             </div>
           </div>
@@ -136,7 +134,7 @@ export const LandingPage = () => {
         </main>
 
         <footer className="pt-6 text-center text-xs text-slate-400">
-          UaiPDV · CalcDistância
+          webmottos
         </footer>
       </div>
     </div>

@@ -3,7 +3,7 @@ import type { DeliveryOrder } from '../types/order';
 /** Gera comprovante em PDF simples (blob URL) para envio via WhatsApp. */
 export function generateOrderReceiptBlob(order: DeliveryOrder, paidAt: string): string {
   const lines = [
-    'COMPROVANTE DE PAGAMENTO - UaiPDV CalcDistancia',
+    'COMPROVANTE DE PAGAMENTO - webmottos',
     '================================================',
     `Pedido: ${order.id}`,
     `Cliente: ${order.clientName}`,

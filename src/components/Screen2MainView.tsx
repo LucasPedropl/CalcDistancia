@@ -1,6 +1,7 @@
 import React from 'react';
-import type { LocationPoint, RouteData, PriceTier, ThemeMode } from '../types';
+import type { RouteData, PriceTier, ThemeMode } from '../types';
 import type { DeliveryOrder } from '../types/order';
+import type { DestinationConfirmResult } from '../types/destination';
 import type { MotoboyWithDistance } from '../services/motoboyService';
 import type { SavedAddress } from '../services/addressService';
 import { SidebarMenu } from './SidebarMenu';
@@ -14,7 +15,7 @@ interface Screen2MainViewProps {
   origin: SavedAddress | null;
   userId: string;
   onUpdateOrigin: (loc: SavedAddress | null) => void;
-  onUpdateDestination: (loc: LocationPoint | null) => void;
+  onUpdateDestination: (result: DestinationConfirmResult | null) => void;
   onOpenSettings: () => void;
   onConfirmPedido: (price: number | null, tier?: PriceTier) => void;
   priceTiers: PriceTier[];
@@ -30,6 +31,7 @@ interface Screen2MainViewProps {
   onNewOrder: () => void;
   onCancelOrder?: () => void;
   onMapContextMenu?: (lat: number, lng: number, clientX: number, clientY: number) => void;
+  onSimulateAccept?: () => void;
 }
 
 export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
@@ -53,6 +55,7 @@ export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
   onNewOrder,
   onCancelOrder,
   onMapContextMenu,
+  onSimulateAccept,
 }) => {
   return (
     <AppViewport theme={theme}>
@@ -96,6 +99,7 @@ export const Screen2MainView: React.FC<Screen2MainViewProps> = ({
             pendingOrder={pendingOrder}
             onNewOrder={onNewOrder}
             onCancelOrder={onCancelOrder}
+            onSimulateAccept={onSimulateAccept}
           />
         }
       />

@@ -32,9 +32,15 @@ export function normalizePhoneToE164(phone: string): string {
 export function resolvePhoneForEnvironment(phone: string): string {
   const e164 = normalizePhoneToE164(phone);
 
-  if (import.meta.env.DEV) {
-    const testPhone = import.meta.env.VITE_BIXS_TEST_PHONE ?? '31972532104';
-    return normalizePhoneToE164(testPhone);
+  const shouldRedirect =
+    import.meta.env.VITE_BIXS_REDIRECT_TO_TEST_PHONE === '1' ||
+    import.meta.env.VITE_BIXS_REDIRECT_TO_TEST_PHONE === 'true';
+
+  if (shouldRedirect && import.meta.env.DEV) {
+    const testPhone = import.meta.env.VITE_BIXS_TEST_PHONE;
+    if (testPhone) {
+      return normalizePhoneToE164(testPhone);
+    }
   }
 
   return e164;

@@ -41,7 +41,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   targetMotoboyName,
   onConfirmSuccess,
   theme = 'light',
-}) => {
+}: OrderModalProps) => {
   const isDark = theme === 'dark';
   const [step, setStep] = React.useState<OrderModalStep>('REVIEW');
   const [phone, setPhone] = React.useState('');
@@ -94,7 +94,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div>
               <h3 className="text-lg font-bold">Confirmação do Pedido</h3>
               <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-                {step === 'REVIEW' ? 'Passo 1 de 2 — Revise os dados' : 'Passo 2 de 2 — Telefone de acompanhamento'}
+                {step === 'REVIEW' ? 'Passo 1 de 2 — Revise os dados' : 'Passo 2 de 2 — WhatsApp do cliente'}
               </p>
             </div>
           </div>
@@ -220,11 +220,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             >
               <div className="mb-3 flex items-center gap-2">
                 <Phone className={`h-5 w-5 ${isDark ? 'text-white' : 'text-slate-900'}`} />
-                <span className="text-sm font-bold">Telefone de acompanhamento</span>
+                <span className="text-sm font-bold">WhatsApp do cliente final</span>
               </div>
               <p className={`mb-4 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
-                Informe o número de quem acompanhará a entrega. Usaremos para notificações via WhatsApp da
-                empresa sobre o status do pedido.
+                Informe o número do cliente que receberá a entrega. Enviaremos atualizações do pedido
+                por WhatsApp, incluindo o link de rastreamento.
               </p>
               <input
                 type="tel"
