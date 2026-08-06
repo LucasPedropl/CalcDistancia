@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   loadCondominiumProfile,
-  registerCondominium,
   type CondominiumProfile,
 } from '../../services/condominiumService';
 import { useOrdersForCondominium } from '../../hooks/useOrders';
@@ -13,18 +12,13 @@ import { AppViewport } from '../../components/layout/AppViewport';
 import { ResponsiveMapShell } from '../../components/layout/ResponsiveMapShell';
 import { CondominioMap } from './components/CondominioMap';
 import { CondominioDeliveriesSidebar } from './components/CondominioDeliveriesSidebar';
-import {
-  type AddressRegistrationFormHandle,
-} from '../../components/AddressRegistrationForm';
+import { CondominioRegistrationScreen } from './components/CondominioRegistrationScreen';
 
 export function CondominioDashboard() {
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState<CondominiumProfile | null>(() =>
     user ? loadCondominiumProfile(user.id) : null,
   );
-  const [condoName, setCondoName] = useState(profile?.name ?? '');
-  const [registerError, setRegisterError] = useState<string | null>(null);
-  const formRef = useRef<AddressRegistrationFormHandle>(null);
 
   useMotoboySimulationTicker();
 
@@ -32,21 +26,16 @@ export function CondominioDashboard() {
 
   if (!user) return null;
 
-  const handleRegister = async () => {
-    setRegisterError(null);
-    const location = await formRef.current?.resolveLocation();
-    if (!location) {
-      setRegisterError('Preencha o endereço completo do condomínio.');
-      return;
-    }
-
-    try {
-      const registered = registerCondominium(user.id, condoName, location);
-      setProfile(registered);
-    } catch (error) {
-      setRegisterError(error instanceof Error ? error.message : 'Erro ao cadastrar condomínio.');
-    }
-  };
+  if (!profile) {
+    return (
+      <CondominioRegistrationScreen
+        userId={user.id}
+        userName={user.name}
+        onSuccess={setProfile}
+        onLogout={logout}
+      />
+    );
+  }
 
   return (
     <AppViewport>
@@ -59,9 +48,7 @@ export function CondominioDashboard() {
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Painel do Condomínio
             </p>
-            <h1 className="truncate text-sm font-bold sm:text-lg">
-              {profile?.name ?? user.name}
-            </h1>
+            <h1 className="truncate text-sm font-bold sm:text-lg">{profile.name}</h1>
           </div>
         </div>
         <button
@@ -77,27 +64,9 @@ export function CondominioDashboard() {
       <ResponsiveMapShell
         mapLabel="Mapa"
         panelLabel="Entregas"
-        defaultMobileView={profile ? 'panel' : 'map'}
-        panel={
-          <CondominioDeliveriesSidebar
-            profile={profile}
-            condoName={condoName}
-            onCondoNameChange={setCondoName}
-            activeDeliveries={activeDeliveries}
-            registerError={registerError}
-            onRegister={handleRegister}
-            formRef={formRef}
-          />
-        }
-        map={
-          profile ? (
-            <CondominioMap profile={profile} activeDeliveries={activeDeliveries} />
-          ) : (
-            <div className="flex h-full min-h-[240px] items-center justify-center bg-slate-100 text-slate-500">
-              <p className="text-sm">Cadastre o condomínio para ver o mapa</p>
-            </div>
-          )
-        }
+        defaultMobileView="panel"
+        panel={<CondominioDeliveriesSidebar profile={profile} activeDeliveries={activeDeliveries} />}
+        map={<CondominioMap profile={profile} activeDeliveries={activeDeliveries} />}
       />
 
       <p className="shrink-0 border-t border-slate-200 bg-white py-2 text-center text-xs text-slate-400">
