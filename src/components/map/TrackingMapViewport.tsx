@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import L from 'leaflet';
 import type { DeliveryOrder } from '../../types/order';
+import { fitMapToPoints } from './mapCentering';
 
 const MAP_PADDING: [number, number] = [48, 48];
 
@@ -10,6 +10,7 @@ interface TrackingMapViewportProps {
   motoboyPosition?: { lat: number; lng: number } | null;
 }
 
+/** Ajusta o zoom apenas na mudança de fase do pedido — sem seguir o motoboy automaticamente. */
 export function TrackingMapViewport({ order, motoboyPosition }: TrackingMapViewportProps) {
   const map = useMap();
   const fittedPhaseRef = useRef<string | null>(null);
@@ -17,38 +18,40 @@ export function TrackingMapViewport({ order, motoboyPosition }: TrackingMapViewp
   useEffect(() => {
     const phaseKey = `${order.id}-${order.status}`;
 
+    if (fittedPhaseRef.current === phaseKey) return;
+
     if (order.status === 'COMPLETED' || order.status === 'CANCELLED') {
-      if (fittedPhaseRef.current !== phaseKey) {
-        map.setView([order.destination.lat, order.destination.lng], 15, { animate: true });
-        fittedPhaseRef.current = phaseKey;
-      }
-      return;
-    }
-
-    if (order.status === 'PENDING' || !motoboyPosition) {
-      if (fittedPhaseRef.current !== phaseKey) {
-        const bounds = L.latLngBounds([
-          [order.origin.lat, order.origin.lng],
-          [order.destination.lat, order.destination.lng],
-        ]);
-        map.fitBounds(bounds, { padding: MAP_PADDING, maxZoom: 15, animate: false });
-        fittedPhaseRef.current = phaseKey;
-      }
-      return;
-    }
-
-    if (fittedPhaseRef.current !== phaseKey) {
-      const bounds = L.latLngBounds([
-        [order.origin.lat, order.origin.lng],
-        [order.destination.lat, order.destination.lng],
-        [motoboyPosition.lat, motoboyPosition.lng],
-      ]);
-      map.fitBounds(bounds, { padding: MAP_PADDING, maxZoom: 15, animate: false });
+      fitMapToPoints(map, [[order.destination.lat, order.destination.lng]], {
+        padding: MAP_PADDING,
+        maxZoom: 15,
+      });
       fittedPhaseRef.current = phaseKey;
       return;
     }
 
-    map.panTo([motoboyPosition.lat, motoboyPosition.lng], { animate: true, duration: 0.4 });
+    if (order.status === 'PENDING' || !motoboyPosition) {
+      fitMapToPoints(
+        map,
+        [
+          [order.origin.lat, order.origin.lng],
+          [order.destination.lat, order.destination.lng],
+        ],
+        { padding: MAP_PADDING, maxZoom: 15 },
+      );
+      fittedPhaseRef.current = phaseKey;
+      return;
+    }
+
+    fitMapToPoints(
+      map,
+      [
+        [order.origin.lat, order.origin.lng],
+        [order.destination.lat, order.destination.lng],
+        [motoboyPosition.lat, motoboyPosition.lng],
+      ],
+      { padding: MAP_PADDING, maxZoom: 15 },
+    );
+    fittedPhaseRef.current = phaseKey;
   }, [
     map,
     order.id,

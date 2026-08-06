@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { fitMapToPoints, serializeMapPoints } from './mapCentering';
 
 const DEFAULT_MAP_PADDING: [number, number] = [48, 48];
 
@@ -11,12 +11,16 @@ interface MapBoundsFitProps {
 
 export function MapBoundsFit({ points, padding = DEFAULT_MAP_PADDING }: MapBoundsFitProps) {
   const map = useMap();
+  const fittedKeyRef = useRef<string | null>(null);
+  const pointsKey = serializeMapPoints(points);
 
   useEffect(() => {
     if (points.length < 2) return;
-    const bounds = L.latLngBounds(points);
-    map.fitBounds(bounds, { padding, animate: true, maxZoom: 16 });
-  }, [map, points, padding]);
+    if (fittedKeyRef.current === pointsKey) return;
+
+    fitMapToPoints(map, points, { padding, maxZoom: 16 });
+    fittedKeyRef.current = pointsKey;
+  }, [map, points, pointsKey, padding]);
 
   return null;
 }

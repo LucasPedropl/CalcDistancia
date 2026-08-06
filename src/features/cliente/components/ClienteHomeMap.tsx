@@ -1,3 +1,5 @@
+import { useMemo, useRef, useCallback } from 'react';
+import type { Map as LeafletMap } from 'leaflet';
 import { MapContainer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -7,6 +9,9 @@ import type { MotoboyWithDistance } from '../../../services/motoboyService';
 import { MapRightClickHandler } from '../../../components/map/MapRightClickHandler';
 import { MapViewportSync } from '../../../components/map/MapViewportSync';
 import { MapBoundsFit } from '../../../components/map/MapBoundsFit';
+import { MapInstanceBridge } from '../../../components/map/MapInstanceBridge';
+import { MapRecenterFloatingButton } from '../../../components/map/MapRecenterFloatingButton';
+import { fitMapToPoints } from '../../../components/map/mapCentering';
 import { AdaptiveMapTileLayer } from '../../../components/map/AdaptiveMapTileLayer';
 import { MapProviderToggle } from '../../../components/map/MapProviderToggle';
 import { useMapViewport } from '../../../hooks/useMapViewport';
@@ -45,11 +50,43 @@ export function ClienteHomeMap({
   theme = 'light',
 }: ClienteHomeMapProps) {
   const isDark = theme === 'dark';
+  const mapRef = useRef<LeafletMap | null>(null);
   const { viewport } = useMapViewport(origin);
+
+  const handleMapReady = useCallback((map: LeafletMap) => {
+    mapRef.current = map;
+  }, []);
 
   const boundsPoints: [number, number][] = [];
   if (origin) boundsPoints.push([origin.lat, origin.lng]);
   if (destination) boundsPoints.push([destination.lat, destination.lng]);
+
+  const selectedMotoboy = useMemo(
+    () => motoboys.find((entry) => entry.id === selectedMotoboyId) ?? null,
+    [motoboys, selectedMotoboyId],
+  );
+
+  const recenterFitPoints = useMemo(() => {
+    const points: [number, number][] = [];
+    if (origin) points.push([origin.lat, origin.lng]);
+    if (destination) points.push([destination.lat, destination.lng]);
+    if (selectedMotoboy) points.push([selectedMotoboy.lat, selectedMotoboy.lng]);
+    return points;
+  }, [
+    origin?.lat,
+    origin?.lng,
+    destination?.lat,
+    destination?.lng,
+    selectedMotoboy?.lat,
+    selectedMotoboy?.lng,
+  ]);
+
+  const recenterLabel = selectedMotoboy ? 'Centralizar no motoboy' : 'Centralizar na rota';
+
+  const handleRecenter = useCallback(() => {
+    if (!mapRef.current || recenterFitPoints.length === 0) return;
+    fitMapToPoints(mapRef.current, recenterFitPoints);
+  }, [recenterFitPoints]);
 
   const originIcon = L.divIcon({
     className: 'custom-origin-marker',
@@ -87,6 +124,7 @@ export function ClienteHomeMap({
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
+        <MapInstanceBridge onMapReady={handleMapReady} />
         <MapViewportSync viewport={viewport} />
         {boundsPoints.length >= 2 && (
           <MapBoundsFit key={`${boundsPoints.length}-${routePolyline?.length ?? 0}`} points={boundsPoints} />
@@ -156,7 +194,16 @@ export function ClienteHomeMap({
             </Marker>
           );
         })}
+
       </MapContainer>
+
+      {recenterFitPoints.length >= 2 && (
+        <MapRecenterFloatingButton
+          theme={theme}
+          onRecenter={handleRecenter}
+          label={recenterLabel}
+        />
+      )}
     </div>
   );
 }

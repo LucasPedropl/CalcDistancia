@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import type { RouteData, ThemeMode } from '../types';
 import type { AvailableMotoboy } from '../types/order';
 import L from 'leaflet';
@@ -6,6 +6,8 @@ import 'leaflet/dist/leaflet.css';
 import { useMapProvider } from '../hooks/useMapProvider';
 import { removeMapBaseLayer, setMapBaseLayer } from '../services/mapBaseLayerService';
 import { MapProviderToggle } from './map/MapProviderToggle';
+import { MapRecenterFloatingButton } from './map/MapRecenterFloatingButton';
+import { centerMapOnPoint, fitMapToPoints } from './map/mapCentering';
 
 interface RouteMapProps {
   routeData: RouteData;
@@ -26,6 +28,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
+  const routeLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const motoboyLayerGroupRef = useRef<L.LayerGroup | null>(null);
+  const fittedRouteKeyRef = useRef<string | null>(null);
   const onMotoboySelectRef = useRef(onMotoboySelect);
   const onMapContextMenuRef = useRef(onMapContextMenu);
   const { provider } = useMapProvider();
@@ -44,6 +49,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     if (leafletMapRef.current) {
       leafletMapRef.current.remove();
       leafletMapRef.current = null;
+      routeLayerGroupRef.current = null;
+      motoboyLayerGroupRef.current = null;
+      fittedRouteKeyRef.current = null;
     }
   };
 
@@ -57,6 +65,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     }).setView([origin.lat, origin.lng], 13);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
+    routeLayerGroupRef.current = L.layerGroup().addTo(map);
+    motoboyLayerGroupRef.current = L.layerGroup().addTo(map);
     leafletMapRef.current = map;
 
     return () => {
@@ -84,15 +94,13 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
   useEffect(() => {
     const map = leafletMapRef.current;
-    if (!map) return;
+    const routeGroup = routeLayerGroupRef.current;
+    if (!map || !routeGroup) return;
 
     const { origin, destination, polyline } = routeData;
+    const routeKey = `${origin.lat},${origin.lng}|${destination.lat},${destination.lng}|${polyline.length}`;
 
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-        map.removeLayer(layer);
-      }
-    });
+    routeGroup.clearLayers();
 
     const originIcon = L.divIcon({
       className: 'custom-leaflet-marker',
@@ -116,15 +124,44 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       iconAnchor: [9, 9],
     });
 
-    const originMarker = L.marker([origin.lat, origin.lng], { icon: originIcon }).addTo(map);
+    const originMarker = L.marker([origin.lat, origin.lng], { icon: originIcon });
     originMarker.bindPopup(
       `<strong style="color:${isDark ? '#fff' : '#000'};">Origem:</strong><br/>${origin.address}`,
     );
+    routeGroup.addLayer(originMarker);
 
-    const destMarker = L.marker([destination.lat, destination.lng], { icon: destIcon }).addTo(map);
+    const destMarker = L.marker([destination.lat, destination.lng], { icon: destIcon });
     destMarker.bindPopup(
       `<strong style="color:${isDark ? '#fff' : '#000'};">Destino:</strong><br/>${destination.address}`,
     );
+    routeGroup.addLayer(destMarker);
+
+    if (polyline.length > 1) {
+      const routeLine = L.polyline(polyline, {
+        color: isDark ? '#ffffff' : '#0f172a',
+        weight: 5,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+      });
+      routeGroup.addLayer(routeLine);
+    }
+
+    if (fittedRouteKeyRef.current !== routeKey && polyline.length > 0) {
+      fitMapToPoints(map, polyline, { padding: [60, 60], maxZoom: 16 });
+      fittedRouteKeyRef.current = routeKey;
+    }
+
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+    });
+  }, [routeData, isDark]);
+
+  useEffect(() => {
+    const motoboyGroup = motoboyLayerGroupRef.current;
+    if (!motoboyGroup) return;
+
+    motoboyGroup.clearLayers();
 
     const svgBike = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2"/></svg>`;
 
@@ -142,32 +179,16 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         iconAnchor: [18, 18],
       });
 
-      const mbMarker = L.marker([motoboy.lat, motoboy.lng], { icon: mbIcon }).addTo(map);
+      const mbMarker = L.marker([motoboy.lat, motoboy.lng], { icon: mbIcon });
       mbMarker.bindPopup(
         `<strong style="color:${isDark ? '#fff' : '#000'};">${motoboy.name}</strong><br/><span style="color:#10b981; font-weight:bold; font-size:12px;">${motoboy.vehicle} · Disponível</span><br/><span style="font-size:11px; margin-top:4px; display:block;">Clique para selecionar</span>`,
       );
       mbMarker.on('click', () => {
         onMotoboySelectRef.current?.(motoboy.id);
       });
+      motoboyGroup.addLayer(mbMarker);
     });
-
-    L.polyline(polyline, {
-      color: isDark ? '#ffffff' : '#0f172a',
-      weight: 5,
-      opacity: 0.95,
-      lineCap: 'round',
-      lineJoin: 'round',
-    }).addTo(map);
-
-    if (polyline.length > 0) {
-      const bounds = L.latLngBounds(polyline);
-      map.fitBounds(bounds, { padding: [60, 60] });
-    }
-
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-    });
-  }, [routeData, isDark, availableMotoboys, selectedMotoboyId]);
+  }, [availableMotoboys, selectedMotoboyId, isDark]);
 
   useEffect(() => {
     const map = leafletMapRef.current;
@@ -185,9 +206,34 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     };
   }, [onMapContextMenu, routeData]);
 
+  const handleRecenter = useCallback(() => {
+    const map = leafletMapRef.current;
+    if (!map) return;
+
+    const selectedMotoboy = availableMotoboys.find((entry) => entry.id === selectedMotoboyId);
+    if (selectedMotoboy) {
+      centerMapOnPoint(map, selectedMotoboy.lat, selectedMotoboy.lng);
+      return;
+    }
+
+    const { polyline } = routeData;
+    if (polyline.length > 0) {
+      fitMapToPoints(map, polyline, { padding: [60, 60], maxZoom: 16 });
+    }
+  }, [availableMotoboys, selectedMotoboyId, routeData]);
+
+  const recenterLabel = selectedMotoboyId
+    ? 'Centralizar no motoboy'
+    : 'Centralizar na rota';
+
   return (
     <div className={`relative h-full w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
       <MapProviderToggle theme={theme} className="absolute left-3 top-3 z-[1000]" />
+      <MapRecenterFloatingButton
+        theme={theme}
+        onRecenter={handleRecenter}
+        label={recenterLabel}
+      />
       <div ref={mapContainerRef} className="z-0 h-full w-full" />
     </div>
   );

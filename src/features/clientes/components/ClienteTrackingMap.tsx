@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useMemo, useRef, useCallback, useState } from 'react';
 import { MapContainer, Marker, Popup, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import type { Map as LeafletMap } from 'leaflet';
 import type { DeliveryOrder } from '../../../types/order';
 import type { ThemeMode } from '../../../types';
 import { getMotoboyById } from '../../../services/motoboyService';
@@ -10,6 +11,9 @@ import { useOrderRoadRoute } from '../../../hooks/useOrderRoadRoute';
 import { AdaptiveMapTileLayer } from '../../../components/map/AdaptiveMapTileLayer';
 import { MapProviderToggle } from '../../../components/map/MapProviderToggle';
 import { TrackingMapViewport } from '../../../components/map/TrackingMapViewport';
+import { MapInstanceBridge } from '../../../components/map/MapInstanceBridge';
+import { MapRecenterFloatingButton } from '../../../components/map/MapRecenterFloatingButton';
+import { fitMapToPoints } from '../../../components/map/mapCentering';
 import { BRAZIL_MAP_VIEWPORT } from '../../../utils/mapViewport';
 
 delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
@@ -29,8 +33,13 @@ interface ClienteTrackingMapProps {
 export function ClienteTrackingMap({ order, theme = 'light' }: ClienteTrackingMapProps) {
   const isDark = theme === 'dark';
   const [, setTick] = useState(0);
+  const mapRef = useRef<LeafletMap | null>(null);
   const refresh = useCallback(() => setTick((value) => value + 1), []);
   useMotoboySimulationRefresh(refresh);
+
+  const handleMapReady = useCallback((map: LeafletMap) => {
+    mapRef.current = map;
+  }, []);
 
   const { route } = useOrderRoadRoute(order);
   const deliveryPolyline = route?.polyline ?? order.polyline;
@@ -64,6 +73,30 @@ export function ClienteTrackingMap({ order, theme = 'light' }: ClienteTrackingMa
     iconAnchor: [18, 18],
   });
 
+  const recenterFitPoints = useMemo(() => {
+    const points: [number, number][] = [
+      [order.origin.lat, order.origin.lng],
+      [order.destination.lat, order.destination.lng],
+    ];
+    if (showMotoboy && motoboy) {
+      points.push([motoboy.lat, motoboy.lng]);
+    }
+    return points;
+  }, [
+    order.origin.lat,
+    order.origin.lng,
+    order.destination.lat,
+    order.destination.lng,
+    showMotoboy,
+    motoboy?.lat,
+    motoboy?.lng,
+  ]);
+
+  const handleRecenter = useCallback(() => {
+    if (!mapRef.current) return;
+    fitMapToPoints(mapRef.current, recenterFitPoints);
+  }, [recenterFitPoints]);
+
   return (
     <div className={`relative h-full min-h-[280px] w-full ${isDark ? 'bg-zinc-950' : 'bg-slate-100'}`}>
       <MapProviderToggle theme={theme} className="absolute left-3 top-3 z-[1000]" />
@@ -73,6 +106,7 @@ export function ClienteTrackingMap({ order, theme = 'light' }: ClienteTrackingMa
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
+        <MapInstanceBridge onMapReady={handleMapReady} />
         <TrackingMapViewport
           order={order}
           motoboyPosition={showMotoboy ? motoboy : null}
@@ -115,6 +149,14 @@ export function ClienteTrackingMap({ order, theme = 'light' }: ClienteTrackingMa
           />
         )}
       </MapContainer>
+
+      {showMotoboy && motoboy && (
+        <MapRecenterFloatingButton
+          theme={theme}
+          onRecenter={handleRecenter}
+          label="Centralizar no motoboy"
+        />
+      )}
     </div>
   );
 }
