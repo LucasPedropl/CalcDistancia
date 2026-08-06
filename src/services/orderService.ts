@@ -1,4 +1,10 @@
-import type { DeliveryOrder, OrderAssignmentMode, OrderPaymentStatus } from '../types/order';
+import type {
+  DeliveryOrder,
+  OrderAssignmentMode,
+  OrderPaymentMethod,
+  OrderPaymentResponsibility,
+  OrderPaymentStatus,
+} from '../types/order';
 import type { LocationPoint } from '../types';
 import { getMotoboyById, getAvailableMotoboys, updateMotoboyStatus } from './motoboyService';
 import { DEFAULT_MOTOBOY_RADIUS_KM, loadMotoboyProfile } from './motoboyProfileService';
@@ -66,6 +72,9 @@ export interface CreateOrderInput {
   recipientClientName?: string;
   condominiumId?: string | null;
   condominiumName?: string;
+  paymentResponsibility?: OrderPaymentResponsibility;
+  paymentMethod?: OrderPaymentMethod;
+  establishmentPaid?: boolean;
 }
 
 export function createOrder(input: CreateOrderInput): DeliveryOrder {
@@ -95,6 +104,15 @@ export function createOrder(input: CreateOrderInput): DeliveryOrder {
 
   const orders = loadOrdersFromStorage();
 
+  const paymentResponsibility = input.paymentResponsibility ?? 'CLIENT';
+  const establishmentPaid = Boolean(input.establishmentPaid);
+  const paymentStatus: OrderPaymentStatus =
+    paymentResponsibility === 'ESTABLISHMENT' && establishmentPaid
+      ? 'PAID'
+      : paymentResponsibility === 'CLIENT'
+        ? 'PENDING'
+        : 'NONE';
+
   const order: DeliveryOrder = {
     id: generateOrderId(),
     clientId: input.clientId,
@@ -117,6 +135,10 @@ export function createOrder(input: CreateOrderInput): DeliveryOrder {
     targetMotoboyId: input.targetMotoboyId,
     targetMotoboyName: targetMotoboy?.name,
     polyline: input.polyline,
+    paymentResponsibility,
+    paymentMethod: input.paymentMethod,
+    paymentStatus,
+    paidAt: establishmentPaid ? new Date().toISOString() : undefined,
     createdAt: new Date().toISOString(),
   };
 

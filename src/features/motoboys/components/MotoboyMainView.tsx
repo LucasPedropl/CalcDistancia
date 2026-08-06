@@ -131,7 +131,7 @@ export function MotoboyMainView({
           ) : mapRoute ? (
             <RouteMap routeData={mapRoute} theme={theme} />
           ) : (
-            <MotoboyMap orders={openOrders} theme={theme} />
+            <MotoboyMap orders={openOrders} motoboyId={motoboyId} theme={theme} />
           )
         }
         panel={

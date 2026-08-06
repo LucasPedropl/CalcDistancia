@@ -11,6 +11,7 @@ import { formatCurrency, getPriceForDistance, getTierForDistance } from '../serv
 import { formatDurationMinutes } from '../utils/formatDuration';
 import { ChevronRight, Clock, Navigation, DollarSign, Bike, Globe, Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
 import { OrderPixPaymentButton } from './payment/OrderPixPaymentModal';
+import { OrderPaymentStatusBadge } from './payment/OrderPaymentStatusBadge';
 
 interface SidebarMenuProps {
   routeData: RouteData;
@@ -201,6 +202,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
             <p className={`mt-1 font-mono text-[10px] ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
               {pendingOrder.id}
             </p>
+            <div className="mt-3">
+              <OrderPaymentStatusBadge order={pendingOrder} />
+            </div>
           </div>
         )}
 
@@ -218,6 +222,9 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
               <strong>{pendingOrder.acceptedMotoboyName}</strong> aceitou sua entrega. Use o chat no canto
               inferior direito para falar com o motoboy.
             </p>
+            <div className="mt-3">
+              <OrderPaymentStatusBadge order={pendingOrder} />
+            </div>
             <OrderPixPaymentButton
               order={pendingOrder}
               theme={theme}

@@ -3,6 +3,15 @@ import type { LocationPoint } from '../types';
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PICKED_UP' | 'CANCELLED' | 'COMPLETED';
 export type OrderAssignmentMode = 'BROADCAST' | 'DIRECT';
 export type OrderPaymentStatus = 'NONE' | 'PENDING' | 'PAID';
+export type OrderPaymentResponsibility = 'CLIENT' | 'ESTABLISHMENT';
+export type OrderPaymentMethod = 'PIX' | 'CARD';
+
+export interface OrderCheckoutResult {
+  trackingPhone: string;
+  paymentResponsibility: OrderPaymentResponsibility;
+  establishmentPaid: boolean;
+  paymentMethod?: OrderPaymentMethod;
+}
 
 export interface DeliveryOrder {
   id: string;
@@ -35,6 +44,9 @@ export interface DeliveryOrder {
   pickedUpMotoboyName?: string;
   pickedUpAt?: string;
   paymentStatus?: OrderPaymentStatus;
+  /** Quem arca com o pagamento da entrega */
+  paymentResponsibility?: OrderPaymentResponsibility;
+  paymentMethod?: OrderPaymentMethod;
   pixInvoiceId?: string;
   pixEmv?: string;
   paidAt?: string;

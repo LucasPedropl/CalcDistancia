@@ -1,10 +1,11 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import type { RouteData, PriceTier, ThemeMode } from '../types';
-import type { OrderAssignmentMode } from '../types/order';
+import type { OrderAssignmentMode, OrderCheckoutResult, OrderPaymentResponsibility } from '../types/order';
 import { formatCurrency } from '../services/pricingService';
 import { formatDurationMinutes } from '../utils/formatDuration';
 import { formatPhoneMask, isValidPhone } from '../utils/phoneValidation';
+import { SimulatedCheckoutPayment } from './payment/SimulatedCheckoutPayment';
 import {
   AlertCircle,
   ArrowLeft,
@@ -14,10 +15,12 @@ import {
   Globe,
   Phone,
   ShieldCheck,
+  User,
+  Wallet,
   X,
 } from 'lucide-react';
 
-type OrderModalStep = 'REVIEW' | 'PHONE';
+type OrderModalStep = 'REVIEW' | 'PHONE' | 'PAYMENT';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -27,9 +30,17 @@ interface OrderModalProps {
   tier?: PriceTier;
   assignmentMode: OrderAssignmentMode;
   targetMotoboyName?: string;
-  onConfirmSuccess: (trackingPhone: string) => void;
+  onConfirmSuccess: (checkout: OrderCheckoutResult) => void;
   theme?: ThemeMode;
 }
+
+const STEP_LABELS: Record<OrderModalStep, string> = {
+  REVIEW: 'Passo 1 de 3 — Revise os dados',
+  PHONE: 'Passo 2 de 3 — WhatsApp do cliente',
+  PAYMENT: 'Passo 3 de 3 — Pagamento da entrega',
+};
+
+const STEP_ORDER: OrderModalStep[] = ['REVIEW', 'PHONE', 'PAYMENT'];
 
 export const OrderModal: React.FC<OrderModalProps> = ({
   isOpen,
@@ -46,32 +57,60 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [step, setStep] = React.useState<OrderModalStep>('REVIEW');
   const [phone, setPhone] = React.useState('');
   const [phoneError, setPhoneError] = React.useState<string | null>(null);
+  const [paymentResponsibility, setPaymentResponsibility] =
+    React.useState<OrderPaymentResponsibility>('CLIENT');
+  const [establishmentPaid, setEstablishmentPaid] = React.useState(false);
+  const [establishmentPaymentMethod, setEstablishmentPaymentMethod] = React.useState<
+    'PIX' | 'CARD' | undefined
+  >(undefined);
+  const [paymentError, setPaymentError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!isOpen) {
       setStep('REVIEW');
       setPhone('');
       setPhoneError(null);
+      setPaymentResponsibility('CLIENT');
+      setEstablishmentPaid(false);
+      setEstablishmentPaymentMethod(undefined);
+      setPaymentError(null);
     }
   }, [isOpen]);
 
   if (!isOpen || !routeData) return null;
 
   const isDirect = assignmentMode === 'DIRECT';
+  const stepIndex = STEP_ORDER.indexOf(step);
 
   const handleClose = () => {
     setStep('REVIEW');
     setPhone('');
     setPhoneError(null);
+    setPaymentResponsibility('CLIENT');
+    setEstablishmentPaid(false);
+    setEstablishmentPaymentMethod(undefined);
+    setPaymentError(null);
     onClose();
   };
 
   const handleConfirm = () => {
     if (!isValidPhone(phone)) {
-      setPhoneError('Informe um telefone válido para receber notificações via WhatsApp.');
+      setPaymentError('Informe um telefone válido do cliente antes de confirmar.');
+      setStep('PHONE');
       return;
     }
-    onConfirmSuccess(phone);
+
+    if (paymentResponsibility === 'ESTABLISHMENT' && !establishmentPaid) {
+      setPaymentError('Conclua o pagamento do estabelecimento (PIX ou cartão) antes de enviar.');
+      return;
+    }
+
+    onConfirmSuccess({
+      trackingPhone: phone,
+      paymentResponsibility,
+      establishmentPaid: paymentResponsibility === 'ESTABLISHMENT' && establishmentPaid,
+      paymentMethod: establishmentPaymentMethod,
+    });
     handleClose();
   };
 
@@ -93,9 +132,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-bold">Confirmação do Pedido</h3>
-              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>
-                {step === 'REVIEW' ? 'Passo 1 de 2 — Revise os dados' : 'Passo 2 de 2 — WhatsApp do cliente'}
-              </p>
+              <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-slate-500'}`}>{STEP_LABELS[step]}</p>
             </div>
           </div>
           <button
@@ -110,17 +147,21 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         </div>
 
         <div className="flex gap-2 px-6 pt-4">
-          <div className={`h-1 flex-1 rounded-full ${isDark ? 'bg-zinc-800' : 'bg-slate-200'}`}>
-            <div className={`h-full w-full rounded-full ${isDark ? 'bg-white' : 'bg-slate-900'}`} />
-          </div>
-          <div className={`h-1 flex-1 rounded-full ${isDark ? 'bg-zinc-800' : 'bg-slate-200'}`}>
+          {STEP_ORDER.map((stepKey, index) => (
             <div
-              className={`h-full rounded-full transition-all ${step === 'PHONE' ? (isDark ? 'w-full bg-white' : 'w-full bg-slate-900') : 'w-0'}`}
-            />
-          </div>
+              key={stepKey}
+              className={`h-1 flex-1 rounded-full ${isDark ? 'bg-zinc-800' : 'bg-slate-200'}`}
+            >
+              <div
+                className={`h-full rounded-full transition-all ${
+                  index <= stepIndex ? (isDark ? 'w-full bg-white' : 'w-full bg-slate-900') : 'w-0'
+                }`}
+              />
+            </div>
+          ))}
         </div>
 
-        {step === 'REVIEW' ? (
+        {step === 'REVIEW' && (
           <div className="space-y-5 p-6">
             <div
               className={`flex items-center gap-3 rounded-xl border p-3 ${
@@ -210,10 +251,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               }`}
             >
               <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />
-              <span>Valor conforme tabela parametrizável — sem cobrança online nesta versão.</span>
+              <span>Na próxima etapa você define quem paga a entrega e confirma o pagamento.</span>
             </div>
           </div>
-        ) : (
+        )}
+
+        {step === 'PHONE' && (
           <div className="space-y-5 p-6">
             <div
               className={`rounded-xl border p-4 ${isDark ? 'border-zinc-800 bg-zinc-900/40' : 'border-slate-200 bg-slate-50'}`}
@@ -223,8 +266,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 <span className="text-sm font-bold">WhatsApp do cliente final</span>
               </div>
               <p className={`mb-4 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
-                Informe o número do cliente que receberá a entrega. Enviaremos atualizações do pedido
-                por WhatsApp, incluindo o link de rastreamento.
+                Informe o número do cliente que receberá a entrega. Enviaremos o link de rastreamento
+                e, se for por conta dele, o link para pagar a entrega.
               </p>
               <input
                 type="tel"
@@ -248,24 +291,92 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 </p>
               )}
             </div>
+          </div>
+        )}
 
-            <div
-              className={`rounded-lg border p-3 text-xs ${
-                isDark ? 'border-zinc-800 text-zinc-500' : 'border-slate-200 text-slate-500'
-              }`}
-            >
-              <p>
-                <strong>Resumo:</strong> {routeData.origin.address} → {routeData.destination.address}
-              </p>
-              <p className="mt-1">
-                {routeData.distanceKm} km · {formatCurrency(price)}
-              </p>
+        {step === 'PAYMENT' && (
+          <div className="space-y-5 p-6">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentResponsibility('CLIENT');
+                  setEstablishmentPaid(false);
+                  setEstablishmentPaymentMethod(undefined);
+                  setPaymentError(null);
+                }}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  paymentResponsibility === 'CLIENT'
+                    ? isDark
+                      ? 'border-white bg-white/10'
+                      : 'border-slate-900 bg-slate-50'
+                    : isDark
+                      ? 'border-zinc-800 bg-zinc-900/40'
+                      : 'border-slate-200 bg-white'
+                }`}
+              >
+                <User className="mb-2 h-5 w-5" />
+                <p className="text-sm font-bold">Por conta do cliente</p>
+                <p className={`mt-1 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
+                  Cliente paga via link de rastreamento (PIX ou cartão).
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentResponsibility('ESTABLISHMENT');
+                  setPaymentError(null);
+                }}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  paymentResponsibility === 'ESTABLISHMENT'
+                    ? isDark
+                      ? 'border-white bg-white/10'
+                      : 'border-slate-900 bg-slate-50'
+                    : isDark
+                      ? 'border-zinc-800 bg-zinc-900/40'
+                      : 'border-slate-200 bg-white'
+                }`}
+              >
+                <Wallet className="mb-2 h-5 w-5" />
+                <p className="text-sm font-bold">Estabelecimento paga</p>
+                <p className={`mt-1 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
+                  Pague agora com PIX ou cartão (simulado).
+                </p>
+              </button>
             </div>
+
+            {paymentResponsibility === 'ESTABLISHMENT' ? (
+              <SimulatedCheckoutPayment
+                amount={price}
+                theme={theme}
+                onPaymentComplete={(method) => {
+                  setEstablishmentPaid(true);
+                  setEstablishmentPaymentMethod(method);
+                  setPaymentError(null);
+                }}
+              />
+            ) : (
+              <div
+                className={`rounded-xl border p-4 text-sm ${
+                  isDark ? 'border-zinc-800 bg-zinc-900/40 text-zinc-300' : 'border-slate-200 bg-slate-50 text-slate-700'
+                }`}
+              >
+                O cliente receberá no WhatsApp o link para pagar a entrega com PIX ou cartão assim que o
+                pedido for criado. O motoboy verá que o pagamento é por conta do cliente.
+              </div>
+            )}
+
+            {paymentError && (
+              <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                {paymentError}
+              </p>
+            )}
           </div>
         )}
 
         <div className={`flex flex-col gap-2 border-t p-6 ${isDark ? 'border-zinc-800 bg-zinc-950' : 'border-slate-200 bg-white'}`}>
-          {step === 'REVIEW' ? (
+          {step === 'REVIEW' && (
             <>
               <button
                 type="button"
@@ -287,7 +398,40 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 Cancelar
               </button>
             </>
-          ) : (
+          )}
+
+          {step === 'PHONE' && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isValidPhone(phone)) {
+                    setPhoneError('Informe um telefone válido para receber notificações via WhatsApp.');
+                    return;
+                  }
+                  setStep('PAYMENT');
+                }}
+                className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold shadow-lg transition-all active:scale-95 ${
+                  isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-slate-900 text-white hover:bg-slate-800'
+                }`}
+              >
+                <span>Avançar para pagamento</span>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep('REVIEW')}
+                className={`flex w-full items-center justify-center gap-1.5 py-2.5 text-xs transition-colors ${
+                  isDark ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Voltar
+              </button>
+            </>
+          )}
+
+          {step === 'PAYMENT' && (
             <>
               <button
                 type="button"
@@ -301,7 +445,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setStep('REVIEW')}
+                onClick={() => setStep('PHONE')}
                 className={`flex w-full items-center justify-center gap-1.5 py-2.5 text-xs transition-colors ${
                   isDark ? 'text-zinc-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
                 }`}

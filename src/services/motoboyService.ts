@@ -1,15 +1,16 @@
 import type { AvailableMotoboy } from '../types/order';
 import type { LocationPoint } from '../types';
+import { SAO_MATEUS_CENTER } from '../utils/saoMateusGeo';
 import { applySimulatedPositions, getSimulatedMotoboyPosition } from './motoboySimulationService';
 import { calculateHaversineDistanceKm } from '../utils/distance';
 import { loadMotoboyProfile } from './motoboyProfileService';
 
-export const DEFAULT_MOTOBOY_SEARCH_RADIUS_KM = 15;
+export const DEFAULT_MOTOBOY_SEARCH_RADIUS_KM = 25;
 
 export const DEFAULT_REFERENCE_LOCATION: LocationPoint = {
-  lat: -18.7163,
-  lng: -39.8589,
-  address: 'Centro, São Mateus, ES',
+  lat: SAO_MATEUS_CENTER.lat,
+  lng: SAO_MATEUS_CENTER.lng,
+  address: SAO_MATEUS_CENTER.address,
 };
 
 const STATUS_KEY = 'calc_distancia_motoboy_status';
@@ -67,7 +68,7 @@ export function updateMotoboyStatus(motoboyId: string, status: AvailableMotoboy[
 
 export function getAvailableMotoboys(): AvailableMotoboy[] {
   const motoboys = DEFAULT_MOTOBOYS.map(withResolvedStatus).filter((motoboy) => {
-    if (motoboy.status !== 'ONLINE') return false;
+    if (motoboy.status === 'OFFLINE') return false;
     const profile = loadMotoboyProfile(motoboy.id);
     if (profile && !profile.publico) return false;
     return true;
@@ -76,15 +77,36 @@ export function getAvailableMotoboys(): AvailableMotoboy[] {
   return applySimulatedPositions(motoboys);
 }
 
+function getBaseMotoboyPosition(motoboyId: string): { lat: number; lng: number } {
+  const base = DEFAULT_MOTOBOYS.find((motoboy) => motoboy.id === motoboyId);
+  return base ? { lat: base.lat, lng: base.lng } : { lat: SAO_MATEUS_CENTER.lat, lng: SAO_MATEUS_CENTER.lng };
+}
+
+export function getMotoboyHomePosition(motoboyId: string): { lat: number; lng: number } {
+  return getBaseMotoboyPosition(motoboyId);
+}
+
 export function getMotoboyById(motoboyId: string): AvailableMotoboy | undefined {
   const found = DEFAULT_MOTOBOYS.find((motoboy) => motoboy.id === motoboyId);
   if (!found) return undefined;
 
   const withStatus = withResolvedStatus(found);
   const simulated = getSimulatedMotoboyPosition(motoboyId);
-  if (!simulated) return withStatus;
-
   return { ...withStatus, lat: simulated.lat, lng: simulated.lng };
+}
+
+/** Posição atual do motoboy (simulada) — mesma fonte usada no mapa do estabelecimento. */
+export function getMotoboyLivePosition(motoboyId: string): LocationPoint {
+  const motoboy = getMotoboyById(motoboyId);
+  if (!motoboy) {
+    return DEFAULT_REFERENCE_LOCATION;
+  }
+
+  return {
+    lat: motoboy.lat,
+    lng: motoboy.lng,
+    address: `${motoboy.name} · São Mateus, ES`,
+  };
 }
 
 export function searchMotoboys(query: string): AvailableMotoboy[] {
@@ -110,15 +132,18 @@ export function getMotoboysNearLocation(
   const base = options?.searchTerm ? searchMotoboys(options.searchTerm) : getAvailableMotoboys();
 
   return base
-    .map((motoboy) => ({
-      ...motoboy,
-      distanceKm: calculateHaversineDistanceKm(
-        location.lat,
-        location.lng,
-        motoboy.lat,
-        motoboy.lng,
-      ),
-    }))
+    .map((motoboy) => {
+      const home = getBaseMotoboyPosition(motoboy.id);
+      return {
+        ...motoboy,
+        distanceKm: calculateHaversineDistanceKm(
+          location.lat,
+          location.lng,
+          home.lat,
+          home.lng,
+        ),
+      };
+    })
     .filter((motoboy) => motoboy.distanceKm <= radiusKm)
     .sort((a, b) => a.distanceKm - b.distanceKm);
 }

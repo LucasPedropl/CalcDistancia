@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, LogOut } from 'lucide-react';
+import { Building2, LogOut, MapPin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   loadCondominiumProfile,
@@ -13,6 +13,7 @@ import { ResponsiveMapShell } from '../../components/layout/ResponsiveMapShell';
 import { CondominioMap } from './components/CondominioMap';
 import { CondominioDeliveriesSidebar } from './components/CondominioDeliveriesSidebar';
 import { CondominioRegistrationScreen } from './components/CondominioRegistrationScreen';
+import { CondominioLocationEditor } from './components/CondominioLocationEditor';
 
 export function CondominioDashboard() {
   const { user, logout } = useAuth();
@@ -24,6 +25,7 @@ export function CondominioDashboard() {
 
   const activeDeliveries = useOrdersForCondominium(user?.id, profile?.address ?? null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isEditingLocation, setIsEditingLocation] = useState(false);
 
   const selectedOrder = useMemo(() => {
     if (activeDeliveries.length === 0) return null;
@@ -72,6 +74,14 @@ export function CondominioDashboard() {
         </div>
         <button
           type="button"
+          onClick={() => setIsEditingLocation(true)}
+          className="mr-2 inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+        >
+          <MapPin className="h-4 w-4" />
+          Localização
+        </button>
+        <button
+          type="button"
           onClick={logout}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
         >
@@ -100,6 +110,17 @@ export function CondominioDashboard() {
           />
         }
       />
+
+      {isEditingLocation && (
+        <CondominioLocationEditor
+          profile={profile}
+          onSaved={(updated) => {
+            setProfile(updated);
+            setIsEditingLocation(false);
+          }}
+          onCancel={() => setIsEditingLocation(false)}
+        />
+      )}
 
       <p className="shrink-0 border-t border-slate-200 bg-white py-2 text-center text-xs text-slate-400">
         É um estabelecimento?{' '}

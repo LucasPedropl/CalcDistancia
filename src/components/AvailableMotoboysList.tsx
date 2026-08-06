@@ -49,6 +49,7 @@ export function AvailableMotoboysList({
       {sortedMotoboys.map((motoboy) => {
         const isSelected = selectedMotoboyId === motoboy.id;
         const isFavorite = favoriteSet.has(motoboy.id);
+        const isBusy = motoboy.status === 'BUSY';
         const deliveryPrice = hasDeliveryPrice
           ? getMotoboyPriceForDistance(motoboy.id, deliveryDistanceKm)
           : null;
@@ -86,6 +87,9 @@ export function AvailableMotoboysList({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{motoboy.name}</p>
+                {isBusy && (
+                  <span className="text-[10px] font-semibold uppercase text-amber-600">Em corrida</span>
+                )}
                 <p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-slate-500'}`}>
                   {motoboy.vehicle} · {formatDistanceKm(motoboy.distanceKm)} de você
                 </p>

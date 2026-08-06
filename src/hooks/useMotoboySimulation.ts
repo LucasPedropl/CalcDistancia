@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { tickMotoboySimulation, subscribeToMotoboySimulation } from '../services/motoboySimulationService';
+import { tickMotoboySimulation, subscribeToMotoboySimulation, reconcileMotoboySimulationBounds } from '../services/motoboySimulationService';
 import { autoAdvanceSimulatedOrders } from '../services/orderSimulationBridge';
 
 const TICK_INTERVAL_MS = 2000;
 
 function runSimulationTick(): void {
+  reconcileMotoboySimulationBounds();
   tickMotoboySimulation();
   autoAdvanceSimulatedOrders();
 }

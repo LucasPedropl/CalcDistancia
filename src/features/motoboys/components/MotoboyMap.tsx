@@ -1,14 +1,16 @@
+import { useMemo, useState } from 'react';
 import { MapContainer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation } from 'lucide-react';
 import L from 'leaflet';
 import type { DeliveryOrder } from '../../../types/order';
 import type { ThemeMode } from '../../../types';
-import { DEFAULT_REFERENCE_LOCATION } from '../../../services/motoboyService';
+import { getMotoboyLivePosition } from '../../../services/motoboyService';
 import { MapViewportSync } from '../../../components/map/MapViewportSync';
 import { AdaptiveMapTileLayer } from '../../../components/map/AdaptiveMapTileLayer';
 import { MapProviderToggle } from '../../../components/map/MapProviderToggle';
 import { useMapViewport } from '../../../hooks/useMapViewport';
+import { useMotoboySimulationRefresh, useMotoboySimulationTicker } from '../../../hooks/useMotoboySimulation';
 import { BRAZIL_MAP_VIEWPORT } from '../../../utils/mapViewport';
 
 delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
@@ -23,16 +25,22 @@ const svgPackage = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="2
 
 interface MotoboyMapProps {
   orders: DeliveryOrder[];
+  motoboyId: string;
   theme?: ThemeMode;
 }
 
-export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
+export function MotoboyMap({ orders, motoboyId, theme = 'light' }: MotoboyMapProps) {
   const isDark = theme === 'dark';
-  const motoboyPosition = {
-    lat: DEFAULT_REFERENCE_LOCATION.lat,
-    lng: DEFAULT_REFERENCE_LOCATION.lng,
-    address: DEFAULT_REFERENCE_LOCATION.address,
-  };
+  const [simulationTick, setSimulationTick] = useState(0);
+
+  useMotoboySimulationTicker();
+  useMotoboySimulationRefresh(() => setSimulationTick((value) => value + 1));
+
+  const motoboyPosition = useMemo(() => {
+    void simulationTick;
+    return getMotoboyLivePosition(motoboyId);
+  }, [motoboyId, simulationTick]);
+
   const { viewport } = useMapViewport(motoboyPosition);
 
   const myLocationIcon = L.divIcon({
@@ -75,7 +83,7 @@ export function MotoboyMap({ orders, theme = 'light' }: MotoboyMapProps) {
               <p className="flex items-center gap-1 font-bold">
                 <Navigation className="h-4 w-4" /> Sua posição
               </p>
-              <p className="mt-1 text-xs opacity-80">Disponível para receber chamados</p>
+              <p className="mt-1 text-xs opacity-80">São Mateus, ES — mesma posição vista pelo cliente</p>
             </div>
           </Popup>
         </Marker>

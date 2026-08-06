@@ -35,6 +35,24 @@ export function saveCondominiumProfile(profile: CondominiumProfile): void {
   localStorage.setItem(`${CONDO_PROFILE_KEY_PREFIX}${profile.userId}`, JSON.stringify(profile));
 }
 
+export function updateCondominiumLocation(
+  userId: string,
+  address: LocationPoint,
+): CondominiumProfile {
+  const existing = loadCondominiumProfile(userId);
+  if (!existing) {
+    throw new Error('Condomínio não cadastrado.');
+  }
+
+  const updated: CondominiumProfile = {
+    ...existing,
+    address,
+  };
+
+  saveCondominiumProfile(updated);
+  return updated;
+}
+
 export function registerCondominium(
   userId: string,
   name: string,

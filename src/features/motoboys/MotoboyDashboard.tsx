@@ -10,7 +10,7 @@ import { OrderChatWidget } from '../../components/chat/OrderChatWidget';
 
 import { acceptOrder, getOrderById, cancelOrder, completeOrder } from '../../services/orderService';
 
-import { getMotoboyById } from '../../services/motoboyService';
+import { getMotoboyById, getMotoboyLivePosition } from '../../services/motoboyService';
 
 import { whatsappApi } from '../../services/whatsappApi';
 
@@ -20,6 +20,8 @@ import { formatTrackingWhatsAppFooter } from '../../utils/trackingUrl';
 import { useActiveOrderForMotoboy, useOpenOrdersForMotoboy } from '../../hooks/useOrders';
 
 import { useOrderRoadRoute } from '../../hooks/useOrderRoadRoute';
+
+import { useMotoboySimulationTicker } from '../../hooks/useMotoboySimulation';
 
 import type { ThemeMode } from '../../types';
 
@@ -40,6 +42,8 @@ export function MotoboyDashboard() {
   const motoboyId = user?.id ?? 'mb-demo';
 
   const motoboyName = getMotoboyById(motoboyId)?.name ?? user?.name ?? 'Motoboy';
+
+  useMotoboySimulationTicker();
 
 
 
@@ -93,10 +97,8 @@ export function MotoboyDashboard() {
 
       setPreviewOrderId(null);
 
-      const motoboyPosition = getMotoboyById(motoboyId);
-      if (motoboyPosition) {
-        void fetchAndSaveOrderPickupRoute(result.id, motoboyPosition.lat, motoboyPosition.lng);
-      }
+      const motoboyPosition = getMotoboyLivePosition(motoboyId);
+      void fetchAndSaveOrderPickupRoute(result.id, motoboyPosition.lat, motoboyPosition.lng);
 
       const clientePhone = result.trackingPhone ?? result.recipientClientPhone;
       if (clientePhone) {

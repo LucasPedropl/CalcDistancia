@@ -5,7 +5,7 @@ import type {
   PriceTier,
   ThemeMode,
 } from '../../types';
-import type { OrderAssignmentMode } from '../../types/order';
+import type { OrderAssignmentMode, OrderCheckoutResult } from '../../types/order';
 import type { DestinationConfirmMeta, DestinationConfirmResult } from '../../types/destination';
 import { fetchRealRoadRoute, reverseGeocode, type ReverseGeocodeResult } from '../../services/geocodingService';
 import { loadSavedPriceTiers, savePriceTiers } from '../../services/pricingService';
@@ -16,7 +16,7 @@ import {
   pushMotoboyNotification,
 } from '../../services/motoboyNotificationService';
 import { whatsappApi } from '../../services/whatsappApi';
-import { useActiveOrdersForClient } from '../../hooks/useOrders';
+import { useActiveOrdersForClient, useOrderTracker } from '../../hooks/useOrders';
 import { useMotoboySimulationTicker, useMotoboySimulationRefresh } from '../../hooks/useMotoboySimulation';
 import { buildRouteDataFromOrder } from '../../utils/orderRoute';
 import { useAuth } from '../../context/AuthContext';
@@ -32,7 +32,7 @@ import { MapDestinationContextMenu } from '../../components/MapDestinationContex
 import { DestinationAddressModal } from '../../components/DestinationAddressModal';
 import { CondominiumDestinationConfirmModal } from '../../components/CondominiumDestinationConfirmModal';
 import { OrderModal } from '../../components/OrderModal';
-import { formatTrackingWhatsAppFooter } from '../../utils/trackingUrl';
+import { formatTrackingWhatsAppFooter, getClientTrackingUrl } from '../../utils/trackingUrl';
 import { OrderChatWidget } from '../../components/chat/OrderChatWidget';
 import { CheckCircle } from 'lucide-react';
 
@@ -92,16 +92,18 @@ export function ClienteDashboard() {
   const [orderTier, setOrderTier] = useState<PriceTier | undefined>(undefined);
   const [selectedMotoboyId, setSelectedMotoboyId] = useState<string | null>(null);
   const [favoriteMotoboyIds, setFavoriteMotoboyIds] = useState<string[]>([]);
-  const [motoboySearchRadiusKm, setMotoboySearchRadiusKm] = useState(15);
+  const [motoboySearchRadiusKm, setMotoboySearchRadiusKm] = useState(25);
   const [destinationMeta, setDestinationMeta] = useState<DestinationConfirmMeta | undefined>();
   const [isDestinationConfirmed, setIsDestinationConfirmed] = useState(false);
 
   const clientActiveOrders = useActiveOrdersForClient(user?.id);
   const [trackedOrderId, setTrackedOrderId] = useState<string | null>(null);
-  const trackedOrder = useMemo(
-    () => clientActiveOrders.find((order) => order.id === trackedOrderId) ?? null,
-    [clientActiveOrders, trackedOrderId],
-  );
+  const trackedOrderFromStorage = useOrderTracker(trackedOrderId);
+  const trackedOrder = useMemo(() => {
+    if (trackedOrderFromStorage) return trackedOrderFromStorage;
+    if (!trackedOrderId) return null;
+    return clientActiveOrders.find((order) => order.id === trackedOrderId) ?? null;
+  }, [trackedOrderFromStorage, clientActiveOrders, trackedOrderId]);
   const acceptedToastShownRef = useRef<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -311,57 +313,93 @@ export function ClienteDashboard() {
     setIsOrderModalOpen(true);
   };
 
-  const handleOrderSuccess = async (trackingPhone: string) => {
-    if (!routeData || !user) return;
+  const handleOrderSuccess = async (checkout: OrderCheckoutResult) => {
+    const snapshotRoute = routeData;
+    const snapshotUser = user;
+    const snapshotPrice = orderPrice;
+    const snapshotTier = orderTier;
+    const snapshotDestinationMeta = destinationMeta;
+    const snapshotMotoboyId = selectedMotoboyId;
 
-    const assignmentMode: OrderAssignmentMode = selectedMotoboyId ? 'DIRECT' : 'BROADCAST';
+    if (!snapshotRoute || !snapshotUser) {
+      showToast('Não foi possível criar o pedido. Refaça a rota e tente novamente.', 'info');
+      return;
+    }
 
-    const clientePhone = trackingPhone.trim();
+    const assignmentMode: OrderAssignmentMode = snapshotMotoboyId ? 'DIRECT' : 'BROADCAST';
+    const clientePhone = checkout.trackingPhone.trim();
 
-    const order = createOrder({
-      clientId: user.id,
-      clientName: user.name,
-      origin: routeData.origin,
-      destination: routeData.destination,
-      distanceKm: routeData.distanceKm,
-      durationMin: routeData.durationMin,
-      price: orderPrice,
-      tierLabel: orderTier?.label,
-      trackingPhone: clientePhone,
-      assignmentMode,
-      targetMotoboyId: selectedMotoboyId ?? undefined,
-      polyline: routeData.polyline,
-      condominiumId: destinationMeta?.condominiumId,
-      condominiumName: destinationMeta?.condominiumName,
-    });
+    let order;
+    try {
+      order = createOrder({
+        clientId: snapshotUser.id,
+        clientName: snapshotUser.name,
+        origin: snapshotRoute.origin,
+        destination: snapshotRoute.destination,
+        distanceKm: snapshotRoute.distanceKm,
+        durationMin: snapshotRoute.durationMin,
+        price: snapshotPrice,
+        tierLabel: snapshotTier?.label,
+        trackingPhone: clientePhone,
+        assignmentMode,
+        targetMotoboyId: snapshotMotoboyId ?? undefined,
+        polyline: snapshotRoute.polyline,
+        condominiumId: snapshotDestinationMeta?.condominiumId,
+        condominiumName: snapshotDestinationMeta?.condominiumName,
+        paymentResponsibility: checkout.paymentResponsibility,
+        paymentMethod: checkout.paymentMethod,
+        establishmentPaid: checkout.establishmentPaid,
+      });
+    } catch (error) {
+      console.error('Falha ao criar pedido:', error);
+      showToast('Erro ao salvar o pedido. Tente novamente.', 'info');
+      return;
+    }
+
+    setTrackedOrderId(order.id);
+    setShowRouteView(true);
+    setIsOrderModalOpen(false);
+
+    const trackingUrl = getClientTrackingUrl(order.trackingCode);
 
     try {
       if (clientePhone) {
+        const paymentNotice =
+          checkout.paymentResponsibility === 'CLIENT'
+            ? `\n💳 *Pagamento por sua conta* — pague com PIX ou cartão no link abaixo.\n`
+            : checkout.establishmentPaid
+              ? `\n✅ *Entrega já paga pelo estabelecimento.*\n`
+              : '';
+
         await whatsappApi.enviarNotificacaoCliente(
           clientePhone,
           'Cliente',
           `📦 *Seu pedido está pronto para entrega!*\n\n` +
-            `Origem: ${routeData.origin.address}\n` +
-            `Destino: ${routeData.destination.address}\n` +
-            `Distância: ${routeData.distanceKm} km\n` +
-            (orderPrice !== null ? `Valor: R$ ${orderPrice.toFixed(2)}\n` : '') +
+            `Origem: ${snapshotRoute.origin.address}\n` +
+            `Destino: ${snapshotRoute.destination.address}\n` +
+            `Distância: ${snapshotRoute.distanceKm} km\n` +
+            (snapshotPrice !== null ? `Valor: R$ ${snapshotPrice.toFixed(2)}\n` : '') +
+            paymentNotice +
             `\nAguardando um motoboy aceitar a corrida.\n\n` +
-            formatTrackingWhatsAppFooter(order.trackingCode),
+            formatTrackingWhatsAppFooter(order.trackingCode) +
+            (checkout.paymentResponsibility === 'CLIENT'
+              ? `\n\n💰 Pague a entrega aqui:\n${trackingUrl}`
+              : ''),
         );
       }
 
-      if (assignmentMode === 'DIRECT' && selectedMotoboyId) {
+      if (assignmentMode === 'DIRECT' && snapshotMotoboyId) {
         pushMotoboyNotification({
-          motoboyId: selectedMotoboyId,
+          motoboyId: snapshotMotoboyId,
           title: 'Novo pedido direto',
           message:
-            `Pedido exclusivo: ${routeData.origin.address} → ${routeData.destination.address} (${routeData.distanceKm} km)`,
+            `Pedido exclusivo: ${snapshotRoute.origin.address} → ${snapshotRoute.destination.address} (${snapshotRoute.distanceKm} km)`,
           orderId: order.id,
         });
       } else {
         pushBroadcastMotoboyNotification({
           title: 'Novo pedido global',
-          message: `Corrida disponível: ${routeData.distanceKm} km — ${routeData.destination.address}`,
+          message: `Corrida disponível: ${snapshotRoute.distanceKm} km — ${snapshotRoute.destination.address}`,
           orderId: order.id,
         });
       }
@@ -376,11 +414,8 @@ export function ClienteDashboard() {
     if (assignmentMode === 'DIRECT') {
       showToast('Pedido enviado! Aguardando aceite do motoboy.', 'info');
     } else {
-      showToast('Pedido enviado globalmente! Aguardando um motoboy aceitar.', 'info');
+      showToast('Pedido enviado globalmente! Aguardando um motoboy aceitar.', 'success');
     }
-
-    setTrackedOrderId(order.id);
-    setShowRouteView(true);
   };
 
   useEffect(() => {

@@ -4,6 +4,8 @@ import type { DeliveryOrder } from '../../../types/order';
 import { formatDurationMinutes } from '../../../utils/formatDuration';
 import { formatCurrency } from '../../../services/pricingService';
 import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentModal';
+import { OrderPaymentStatusBadge } from '../../../components/payment/OrderPaymentStatusBadge';
+import { isOrderDeliveryPaid } from '../../../utils/orderPaymentDisplay';
 
 const STATUS_LABELS: Record<DeliveryOrder['status'], string> = {
   PENDING: 'Aguardando motoboy',
@@ -74,12 +76,22 @@ export function ClienteTrackingSidebar({ order }: ClienteTrackingSidebarProps) {
             </p>
           )}
 
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <OrderPaymentStatusBadge order={order} />
+          </div>
+
           <OrderPixPaymentButton
             order={order}
             variant="tracking"
             payerLabel="Cliente final"
             className="mt-4"
           />
+
+          {isOrderDeliveryPaid(order) && (
+            <p className="mt-2 text-xs font-medium text-emerald-700">
+              Pagamento confirmado. O motoboy já foi notificado.
+            </p>
+          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-1">

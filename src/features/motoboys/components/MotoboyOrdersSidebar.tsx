@@ -5,6 +5,7 @@ import { formatCurrency } from '../../../services/pricingService';
 import { formatDurationMinutes } from '../../../utils/formatDuration';
 import { Search, Package, MapPin, CheckCircle, Clock, Navigation, Map, X, XCircle, Flag } from 'lucide-react';
 import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentModal';
+import { OrderPaymentStatusBadge } from '../../../components/payment/OrderPaymentStatusBadge';
 
 interface MotoboyOrdersSidebarProps {
   openOrders: DeliveryOrder[];
@@ -79,6 +80,10 @@ function OrderCardDetails({
         <span className="flex items-center gap-1">
           <Clock className="h-3 w-3" />~{formatDurationMinutes(order.durationMin)}
         </span>
+      </div>
+
+      <div className="mt-3">
+        <OrderPaymentStatusBadge order={order} />
       </div>
     </>
   );
@@ -163,13 +168,15 @@ export function MotoboyOrdersSidebar({
             </div>
             <OrderCardDetails order={activeOrder} isDark={isDark} />
             <p className={`mt-3 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-              Rota fixada no mapa. Use o chat para falar com o cliente.
+              {activeOrder.status === 'PICKED_UP'
+                ? 'No destino, cobre o cliente se o pagamento ainda estiver pendente.'
+                : 'Rota fixada no mapa. Use o chat para falar com o cliente.'}
             </p>
             <OrderPixPaymentButton
               order={activeOrder}
               theme={theme}
               variant="motoboy"
-              payerLabel="Motoboy"
+              payerLabel="Cliente final"
               className="mt-3"
             />
             {onCompleteActiveOrder && (

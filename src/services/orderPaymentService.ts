@@ -6,6 +6,11 @@ import {
   markOrderPaymentPaid,
 } from './orderService';
 import type { DeliveryOrder } from '../types/order';
+import {
+  canShowClientTrackingPayment,
+  canShowEstablishmentOrderPayment,
+  canShowMotoboyDestinationPix,
+} from '../utils/orderPaymentDisplay';
 
 const DEFAULT_PIX_AMOUNT = 25;
 
@@ -59,9 +64,21 @@ export function simulateOrderPixPaymentConfirmed(orderId: string): DeliveryOrder
   return markOrderPaymentPaid(orderId);
 }
 
-export function canShowOrderPixPayment(order: DeliveryOrder | null | undefined): boolean {
+export function canShowOrderPixPayment(
+  order: DeliveryOrder | null | undefined,
+  variant: 'motoboy' | 'client' | 'tracking' = 'tracking',
+): boolean {
   if (!order) return false;
-  return order.status === 'ACCEPTED' || order.status === 'PICKED_UP';
+
+  if (variant === 'motoboy') {
+    return canShowMotoboyDestinationPix(order);
+  }
+
+  if (variant === 'client') {
+    return canShowEstablishmentOrderPayment(order);
+  }
+
+  return canShowClientTrackingPayment(order);
 }
 
 export function getOrderPixAmount(order: DeliveryOrder): number {

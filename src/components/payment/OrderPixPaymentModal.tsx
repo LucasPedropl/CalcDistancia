@@ -6,6 +6,7 @@ import {
   Camera,
   CheckCircle2,
   Copy,
+  CreditCard,
   Loader2,
   QrCode,
   X,
@@ -21,7 +22,7 @@ import {
 } from '../../services/orderPaymentService';
 import { useOrderTracker } from '../../hooks/useOrders';
 
-type PaymentTab = 'qr' | 'copy';
+type PaymentTab = 'qr' | 'copy' | 'card';
 
 interface OrderPixPaymentModalProps {
   orderId: string;
@@ -47,6 +48,9 @@ export function OrderPixPaymentModal({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -91,6 +95,23 @@ export function OrderPixPaymentModal({
     if (paid) {
       onPaymentConfirmed?.(paid);
     }
+  };
+
+  const handleSimulateCardPayment = () => {
+    const digits = cardNumber.replace(/\D/g, '');
+    if (digits.length < 13) {
+      setError('Informe um número de cartão válido.');
+      return;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(cardExpiry.trim())) {
+      setError('Validade no formato MM/AA.');
+      return;
+    }
+    if (cardCvv.replace(/\D/g, '').length < 3) {
+      setError('CVV inválido.');
+      return;
+    }
+    handleSimulatePayment();
   };
 
   return createPortal(
@@ -155,7 +176,7 @@ export function OrderPixPaymentModal({
                   }`}
                 >
                   <Camera className="h-3.5 w-3.5" />
-                  Escanear QR
+                  QR PIX
                 </button>
                 <button
                   type="button"
@@ -173,6 +194,22 @@ export function OrderPixPaymentModal({
                   <Copy className="h-3.5 w-3.5" />
                   Copia e cola
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setTab('card')}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition-colors ${
+                    tab === 'card'
+                      ? isDark
+                        ? 'bg-white text-black'
+                        : 'bg-white text-slate-900 shadow-sm'
+                      : isDark
+                        ? 'text-zinc-400'
+                        : 'text-slate-600'
+                  }`}
+                >
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Cartão
+                </button>
               </div>
 
               {tab === 'qr' ? (
@@ -184,7 +221,7 @@ export function OrderPixPaymentModal({
                     Abra o app do banco, escolha <strong>Pagar com PIX</strong> e aponte a câmera para o QR Code.
                   </p>
                 </div>
-              ) : (
+              ) : tab === 'copy' ? (
                 <div className="space-y-3">
                   <div
                     className={`max-h-28 overflow-y-auto rounded-xl border p-3 font-mono text-[11px] leading-relaxed break-all ${
@@ -204,20 +241,67 @@ export function OrderPixPaymentModal({
                     {copied ? 'Copiado!' : 'Copiar chave PIX'}
                   </button>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Número do cartão"
+                    value={cardNumber}
+                    onChange={(e) => setCardNumber(e.target.value)}
+                    className={`w-full rounded-lg border p-3 text-sm focus:outline-none ${
+                      isDark ? 'border-zinc-800 bg-zinc-900 text-white' : 'border-slate-300 bg-white'
+                    }`}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="MM/AA"
+                      value={cardExpiry}
+                      onChange={(e) => setCardExpiry(e.target.value)}
+                      className={`rounded-lg border p-3 text-sm focus:outline-none ${
+                        isDark ? 'border-zinc-800 bg-zinc-900 text-white' : 'border-slate-300 bg-white'
+                      }`}
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="CVV"
+                      value={cardCvv}
+                      onChange={(e) => setCardCvv(e.target.value)}
+                      className={`rounded-lg border p-3 text-sm focus:outline-none ${
+                        isDark ? 'border-zinc-800 bg-zinc-900 text-white' : 'border-slate-300 bg-white'
+                      }`}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSimulateCardPayment}
+                    disabled={isSimulating}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold ${
+                      isDark ? 'bg-white text-black hover:bg-zinc-200' : 'bg-slate-900 text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {isSimulating ? 'Processando...' : 'Pagar com cartão (simulado)'}
+                  </button>
+                </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleSimulatePayment}
-                disabled={isSimulating}
-                className={`w-full rounded-xl border py-2.5 text-xs font-semibold transition-colors ${
-                  isDark
-                    ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-900'
-                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                {isSimulating ? 'Confirmando...' : 'Simular pagamento recebido (dev)'}
-              </button>
+              {tab !== 'card' && (
+                <button
+                  type="button"
+                  onClick={handleSimulatePayment}
+                  disabled={isSimulating}
+                  className={`w-full rounded-xl border py-2.5 text-xs font-semibold transition-colors ${
+                    isDark
+                      ? 'border-zinc-700 text-zinc-300 hover:bg-zinc-900'
+                      : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {isSimulating ? 'Confirmando...' : 'Simular pagamento PIX recebido (dev)'}
+                </button>
+              )}
             </>
           )}
 
@@ -253,17 +337,15 @@ export function OrderPixPaymentButton({
   const [isOpen, setIsOpen] = useState(false);
   const order = useOrderTracker(initialOrder.id) ?? initialOrder;
   const isPaid = order.paymentStatus === 'PAID';
-  const hasPix = Boolean(order.pixEmv);
 
-  if (!canShowOrderPixPayment(order)) return null;
+  if (!canShowOrderPixPayment(order, variant)) return null;
 
-  const label = isPaid
-    ? 'PIX pago'
-    : hasPix
-      ? 'Abrir QR PIX'
-      : variant === 'motoboy'
-        ? 'Gerar QR PIX'
-        : 'Pagar com PIX';
+  const label =
+    variant === 'motoboy'
+      ? 'Mostrar QR PIX ao cliente'
+      : variant === 'tracking'
+        ? 'Pagar entrega'
+        : 'Pagar entrega';
 
   const Icon = isPaid ? CheckCircle2 : QrCode;
 

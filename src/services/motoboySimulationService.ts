@@ -1,13 +1,17 @@
 import type { AvailableMotoboy } from '../types/order';
 import type { DeliveryOrder } from '../types/order';
-import { DEMO_MOTOBOY_IDS, getMotoboyById } from './motoboyService';
+import { DEMO_MOTOBOY_IDS, getMotoboyHomePosition } from './motoboyService';
 import { getAllOrders } from './orderService';
 import { fetchRealRoadRoute } from './geocodingService';
+import {
+  clampToSaoMateus,
+  isInsideSaoMateus,
+  randomNearbyPointInSaoMateus,
+} from '../utils/saoMateusGeo';
 import {
   createStraightPolyline,
   findDistanceAlongPolyline,
   interpolateAlongPolyline,
-  randomNearbyPoint,
 } from '../utils/polylineNavigation';
 import { moveTowardPoint } from '../utils/geoInterpolation';
 
@@ -45,13 +49,60 @@ function saveSimulationStates(states: Record<string, MotoboySimulationState>): v
 }
 
 function getDefaultState(motoboy: AvailableMotoboy): MotoboySimulationState {
+  const home = getMotoboyHomePosition(motoboy.id);
+  const clamped = clampToSaoMateus(home.lat, home.lng);
   return {
     motoboyId: motoboy.id,
-    lat: motoboy.lat,
-    lng: motoboy.lng,
+    lat: clamped.lat,
+    lng: clamped.lng,
     mode: 'idle',
     idleRouteDistanceKm: 0,
   };
+}
+
+function stubMotoboy(motoboyId: string): AvailableMotoboy {
+  const home = getMotoboyHomePosition(motoboyId);
+  return {
+    id: motoboyId,
+    name: motoboyId,
+    lat: home.lat,
+    lng: home.lng,
+    status: 'ONLINE',
+    vehicle: 'Moto',
+  };
+}
+
+export function reconcileMotoboySimulationBounds(): void {
+  const states = loadSimulationStates();
+  let changed = false;
+
+  for (const motoboyId of DEMO_MOTOBOY_IDS) {
+    const home = getMotoboyHomePosition(motoboyId);
+    const current = states[motoboyId];
+
+    if (!current || !isInsideSaoMateus(current.lat, current.lng)) {
+      const reset = clampToSaoMateus(home.lat, home.lng);
+      states[motoboyId] = {
+        motoboyId,
+        lat: reset.lat,
+        lng: reset.lng,
+        mode: 'idle',
+        idleRouteDistanceKm: 0,
+      };
+      changed = true;
+      continue;
+    }
+
+    const clamped = clampToSaoMateus(current.lat, current.lng);
+    if (clamped.lat !== current.lat || clamped.lng !== current.lng) {
+      states[motoboyId] = { ...current, lat: clamped.lat, lng: clamped.lng };
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    saveSimulationStates(states);
+  }
 }
 
 function resolveTargetForMotoboy(motoboyId: string): {
@@ -112,10 +163,12 @@ function requestIdleRoute(
   if (idleRouteFetches.has(motoboyId)) return;
 
   idleRouteFetches.add(motoboyId);
-  const destination = randomNearbyPoint(lat, lng, 0.15, 0.45);
+  const home = getMotoboyHomePosition(motoboyId);
+  const patrolOrigin = clampToSaoMateus(lat, lng);
+  const destination = randomNearbyPointInSaoMateus(home.lat, home.lng, 0.08, 0.35);
 
   void fetchRealRoadRoute(
-    { lat, lng, address: 'Patrulha' },
+    { lat: patrolOrigin.lat, lng: patrolOrigin.lng, address: 'Patrulha' },
     { lat: destination.lat, lng: destination.lng, address: 'Destino patrulha' },
   )
     .then((route) => {
@@ -140,16 +193,19 @@ function requestIdleRoute(
 
 export function getSimulatedMotoboyPosition(
   motoboyId: string,
-): { lat: number; lng: number } | null {
+): { lat: number; lng: number } {
   const state = loadSimulationStates()[motoboyId];
-  if (!state) return null;
-  return { lat: state.lat, lng: state.lng };
+  if (state) {
+    return clampToSaoMateus(state.lat, state.lng);
+  }
+
+  const home = getMotoboyHomePosition(motoboyId);
+  return clampToSaoMateus(home.lat, home.lng);
 }
 
 export function applySimulatedPositions<T extends AvailableMotoboy>(motoboys: T[]): T[] {
   return motoboys.map((motoboy) => {
     const simulated = getSimulatedMotoboyPosition(motoboy.id);
-    if (!simulated) return motoboy;
     return { ...motoboy, lat: simulated.lat, lng: simulated.lng };
   });
 }
@@ -159,9 +215,7 @@ export function tickMotoboySimulation(): void {
   let changed = false;
 
   for (const motoboyId of DEMO_MOTOBOY_IDS) {
-    const motoboy = getMotoboyById(motoboyId);
-    if (!motoboy) continue;
-
+    const motoboy = stubMotoboy(motoboyId);
     const current = states[motoboy.id] ?? getDefaultState(motoboy);
     const target = resolveTargetForMotoboy(motoboy.id);
     const nextMode = target.mode;
@@ -196,7 +250,8 @@ export function tickMotoboySimulation(): void {
           idleRouteDistanceKm = 0;
         }
       } else {
-        const fallbackTarget = randomNearbyPoint(current.lat, current.lng, 0.05, 0.15);
+        const home = getMotoboyHomePosition(motoboy.id);
+        const fallbackTarget = randomNearbyPointInSaoMateus(home.lat, home.lng, 0.03, 0.12);
         const moved = moveTowardPoint(
           current.lat,
           current.lng,
@@ -236,10 +291,11 @@ export function tickMotoboySimulation(): void {
       }
     }
 
+    const clampedPosition = clampToSaoMateus(nextLat, nextLng);
     const updated: MotoboySimulationState = {
       motoboyId: motoboy.id,
-      lat: nextLat,
-      lng: nextLng,
+      lat: clampedPosition.lat,
+      lng: clampedPosition.lng,
       mode: nextMode,
       orderId: target.orderId,
       routeDistanceKm: nextMode === 'idle' ? undefined : routeDistanceKm,
@@ -267,11 +323,8 @@ export function tickMotoboySimulation(): void {
 }
 
 export function resetMotoboySimulation(motoboyId: string): void {
-  const motoboy = getMotoboyById(motoboyId);
-  if (!motoboy) return;
-
   const states = loadSimulationStates();
-  states[motoboyId] = getDefaultState(motoboy);
+  states[motoboyId] = getDefaultState(stubMotoboy(motoboyId));
   saveSimulationStates(states);
 }
 

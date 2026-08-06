@@ -8,6 +8,8 @@ type GoogleMapsInitWindow = Window & {
 };
 
 const DEFAULT_LIBRARIES = ['places'];
+const SCRIPT_ID = 'calc-distancia-google-maps-api';
+const LOAD_TIMEOUT_MS = 20_000;
 
 let googleMapsLoadPromise: Promise<void> | null = null;
 
@@ -20,6 +22,60 @@ function hasGoogleMapsLibraries(libraries: string[]): boolean {
   if (!initWindow.google?.maps) return false;
   if (libraries.includes('places') && !initWindow.google.maps.places) return false;
   return true;
+}
+
+function waitForGoogleMapsLibraries(libraries: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+
+    const tick = () => {
+      if (hasGoogleMapsLibraries(libraries)) {
+        resolve();
+        return;
+      }
+
+      if (Date.now() - startedAt > LOAD_TIMEOUT_MS) {
+        googleMapsLoadPromise = null;
+        reject(new Error('Timeout aguardando Google Maps.'));
+        return;
+      }
+
+      window.setTimeout(tick, 50);
+    };
+
+    tick();
+  });
+}
+
+function injectGoogleMapsScript(apiKey: string, libraries: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const callbackName = '__calcDistanciaGoogleMapsInit';
+    const initWindow = window as GoogleMapsInitWindow;
+
+    initWindow[callbackName] = () => {
+      delete initWindow[callbackName];
+      resolve();
+    };
+
+    const params = new URLSearchParams({
+      key: apiKey,
+      loading: 'async',
+      callback: callbackName,
+      libraries: libraries.join(','),
+    });
+
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    script.async = true;
+    script.onerror = () => {
+      delete initWindow[callbackName];
+      script.remove();
+      googleMapsLoadPromise = null;
+      reject(new Error('Falha ao carregar Google Maps.'));
+    };
+    document.head.appendChild(script);
+  });
 }
 
 export function isGoogleMapsApiConfigured(): boolean {
@@ -36,37 +92,21 @@ export function loadGoogleMapsApi(libraries: string[] = DEFAULT_LIBRARIES): Prom
     return Promise.resolve();
   }
 
+  if (googleMapsLoadPromise) {
+    return googleMapsLoadPromise;
+  }
+
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim();
   if (!apiKey) {
     return Promise.reject(new Error('VITE_GOOGLE_MAPS_API_KEY não configurada.'));
   }
 
-  googleMapsLoadPromise = new Promise((resolve, reject) => {
-    const callbackName = '__calcDistanciaGoogleMapsInit';
-    const initWindow = window as GoogleMapsInitWindow;
+  const existingScript = document.getElementById(SCRIPT_ID);
+  if (existingScript) {
+    googleMapsLoadPromise = waitForGoogleMapsLibraries(mergedLibraries);
+    return googleMapsLoadPromise;
+  }
 
-    initWindow[callbackName] = () => {
-      delete initWindow[callbackName];
-      resolve();
-    };
-
-    const params = new URLSearchParams({
-      key: apiKey,
-      loading: 'async',
-      callback: callbackName,
-      libraries: mergedLibraries.join(','),
-    });
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
-    script.async = true;
-    script.onerror = () => {
-      delete initWindow[callbackName];
-      googleMapsLoadPromise = null;
-      reject(new Error('Falha ao carregar Google Maps.'));
-    };
-    document.head.appendChild(script);
-  });
-
+  googleMapsLoadPromise = injectGoogleMapsScript(apiKey, mergedLibraries);
   return googleMapsLoadPromise;
 }
