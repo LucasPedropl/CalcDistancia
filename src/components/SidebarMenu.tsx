@@ -10,6 +10,7 @@ import { AvailableMotoboysList } from './AvailableMotoboysList';
 import { formatCurrency, getPriceForDistance, getTierForDistance } from '../services/pricingService';
 import { formatDurationMinutes } from '../utils/formatDuration';
 import { ChevronRight, Clock, Navigation, DollarSign, Bike, Globe, Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
+import { OrderPixPaymentButton } from './payment/OrderPixPaymentModal';
 
 interface SidebarMenuProps {
   routeData: RouteData;
@@ -53,7 +54,8 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
   const deliveryPrice = getPriceForDistance(routeData.distanceKm, priceTiers);
   const selectedMotoboy = availableMotoboys.find((m) => m.id === selectedMotoboyId);
   const isWaitingForAcceptance = pendingOrder?.status === 'PENDING';
-  const isOrderAccepted = pendingOrder?.status === 'ACCEPTED';
+  const isOrderInProgress =
+    pendingOrder?.status === 'ACCEPTED' || pendingOrder?.status === 'PICKED_UP';
 
   return (
     <aside
@@ -202,7 +204,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
           </div>
         )}
 
-        {isOrderAccepted && pendingOrder && (
+        {isOrderInProgress && pendingOrder && (
           <div
             className={`rounded-xl border p-5 ${
               isDark ? 'border-emerald-900/50 bg-emerald-950/20' : 'border-emerald-200 bg-emerald-50'
@@ -216,6 +218,13 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
               <strong>{pendingOrder.acceptedMotoboyName}</strong> aceitou sua entrega. Use o chat no canto
               inferior direito para falar com o motoboy.
             </p>
+            <OrderPixPaymentButton
+              order={pendingOrder}
+              theme={theme}
+              variant="client"
+              payerLabel="Estabelecimento"
+              className="mt-3"
+            />
           </div>
         )}
       </div>
@@ -225,7 +234,7 @@ export const SidebarMenu: React.FC<SidebarMenuProps> = ({
           isDark ? 'border-zinc-800 bg-zinc-950' : 'border-slate-200 bg-white'
         }`}
       >
-        {isOrderAccepted ? (
+        {isOrderInProgress ? (
           <div className="space-y-2">
             {onCancelOrder && (
               <button

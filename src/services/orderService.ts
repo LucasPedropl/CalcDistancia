@@ -306,6 +306,26 @@ export function confirmPickup(
   return updatedOrder;
 }
 
+export function attachPixPaymentToOrder(
+  orderId: string,
+  payment: { invoiceId: string; pixEmv: string },
+): DeliveryOrder | null {
+  const orders = loadOrdersFromStorage();
+  const orderIndex = orders.findIndex((order) => order.id === orderId);
+  if (orderIndex === -1) return null;
+
+  const updatedOrder: DeliveryOrder = {
+    ...orders[orderIndex],
+    paymentStatus: 'PENDING',
+    pixInvoiceId: payment.invoiceId,
+    pixEmv: payment.pixEmv,
+  };
+
+  orders[orderIndex] = updatedOrder;
+  saveOrdersToStorage(orders);
+  return updatedOrder;
+}
+
 export function markOrderPaymentPaid(orderId: string): DeliveryOrder | null {
   const orders = loadOrdersFromStorage();
   const orderIndex = orders.findIndex((order) => order.id === orderId);

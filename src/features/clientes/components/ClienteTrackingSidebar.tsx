@@ -3,6 +3,7 @@ import { Package, MapPin, Bike, Clock, CheckCircle2 } from 'lucide-react';
 import type { DeliveryOrder } from '../../../types/order';
 import { formatDurationMinutes } from '../../../utils/formatDuration';
 import { formatCurrency } from '../../../services/pricingService';
+import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentModal';
 
 const STATUS_LABELS: Record<DeliveryOrder['status'], string> = {
   PENDING: 'Aguardando motoboy',
@@ -72,6 +73,13 @@ export function ClienteTrackingSidebar({ order }: ClienteTrackingSidebarProps) {
               Pedido entregue com sucesso!
             </p>
           )}
+
+          <OrderPixPaymentButton
+            order={order}
+            variant="tracking"
+            payerLabel="Cliente final"
+            className="mt-4"
+          />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-1">

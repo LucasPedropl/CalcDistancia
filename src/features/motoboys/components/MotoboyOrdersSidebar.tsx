@@ -4,6 +4,7 @@ import type { ThemeMode } from '../../../types';
 import { formatCurrency } from '../../../services/pricingService';
 import { formatDurationMinutes } from '../../../utils/formatDuration';
 import { Search, Package, MapPin, CheckCircle, Clock, Navigation, Map, X, XCircle, Flag } from 'lucide-react';
+import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentModal';
 
 interface MotoboyOrdersSidebarProps {
   openOrders: DeliveryOrder[];
@@ -164,6 +165,13 @@ export function MotoboyOrdersSidebar({
             <p className={`mt-3 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
               Rota fixada no mapa. Use o chat para falar com o cliente.
             </p>
+            <OrderPixPaymentButton
+              order={activeOrder}
+              theme={theme}
+              variant="motoboy"
+              payerLabel="Motoboy"
+              className="mt-3"
+            />
             {onCompleteActiveOrder && (
               <button
                 type="button"
