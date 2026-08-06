@@ -10,11 +10,21 @@ import type { DeliveryOrder } from '../../../types/order';
 interface CondominioDeliveriesSidebarProps {
   profile: CondominiumProfile;
   activeDeliveries: DeliveryOrder[];
+  selectedOrderId: string | null;
+  onSelectOrder: (orderId: string) => void;
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pendente',
+  ACCEPTED: 'A caminho da coleta',
+  PICKED_UP: 'Entregando no condomínio',
+};
 
 export function CondominioDeliveriesSidebar({
   profile,
   activeDeliveries,
+  selectedOrderId,
+  onSelectOrder,
 }: CondominioDeliveriesSidebarProps) {
   return (
     <aside className="flex h-full min-h-0 w-full flex-col overflow-y-auto border-r border-slate-200 bg-slate-50 text-slate-900">
@@ -44,45 +54,57 @@ export function CondominioDeliveriesSidebar({
             </p>
           </div>
         ) : (
-          activeDeliveries.map((order) => (
-            <article
-              key={order.id}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-mono text-[10px] text-slate-400">{order.id}</p>
-                  <p className="mt-1 flex items-center gap-2 font-semibold">
-                    <Bike className="h-4 w-4 text-emerald-600" />
-                    {order.acceptedMotoboyName ?? 'Aguardando motoboy'}
-                  </p>
-                </div>
-                <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold">
-                  {order.status === 'PENDING' && 'Pendente'}
-                  {order.status === 'ACCEPTED' && 'A caminho da coleta'}
-                  {order.status === 'PICKED_UP' && 'Entregando no condomínio'}
-                </span>
-              </div>
+          activeDeliveries.map((order) => {
+            const isSelected = order.id === selectedOrderId;
 
-              <div className="mt-3 space-y-2">
-                <div className="rounded-lg bg-slate-50 p-3 text-sm">
-                  <p className="text-xs font-semibold uppercase text-slate-500">Destinatário</p>
-                  <p className="mt-1 flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5" />
-                    {order.recipientClientName ?? 'Morador'}
-                    {order.recipientClientPhone && (
-                      <span className="text-slate-500">· {order.recipientClientPhone}</span>
-                    )}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">{order.destination.address}</p>
+            return (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => onSelectOrder(order.id)}
+                className={`w-full rounded-xl border p-4 text-left shadow-sm transition-all ${
+                  isSelected
+                    ? 'border-slate-900 bg-white ring-2 ring-slate-900/10'
+                    : 'border-slate-200 bg-white hover:border-slate-400'
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] text-slate-400">{order.id}</p>
+                    <p className="mt-1 flex items-center gap-2 font-semibold">
+                      <Bike className="h-4 w-4 text-emerald-600" />
+                      {order.acceptedMotoboyName ?? 'Aguardando motoboy'}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-lg px-2 py-1 text-xs font-semibold ${
+                      isSelected ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {STATUS_LABELS[order.status] ?? order.status}
+                  </span>
                 </div>
-                <div className="rounded-lg bg-slate-50 p-3 text-sm">
-                  <p className="text-xs font-semibold uppercase text-slate-500">Estabelecimento</p>
-                  <p className="mt-1">{order.clientName}</p>
+
+                <div className="mt-3 space-y-2">
+                  <div className="rounded-lg bg-slate-50 p-3 text-sm">
+                    <p className="text-xs font-semibold uppercase text-slate-500">Destinatário</p>
+                    <p className="mt-1 flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5" />
+                      {order.recipientClientName ?? 'Morador'}
+                      {order.recipientClientPhone && (
+                        <span className="text-slate-500">· {order.recipientClientPhone}</span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">{order.destination.address}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 p-3 text-sm">
+                    <p className="text-xs font-semibold uppercase text-slate-500">Estabelecimento</p>
+                    <p className="mt-1">{order.clientName}</p>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))
+              </button>
+            );
+          })
         )}
       </div>
     </aside>

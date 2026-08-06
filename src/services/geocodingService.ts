@@ -1,5 +1,83 @@
 import type { LocationPoint, RouteData } from '../types';
 import { isStreetNumberOptionalValue, normalizeBrazilianStateToUf } from '../types/addressForm';
+import { calculateHaversineDistanceKm } from '../utils/distance';
+
+const NOMINATIM_HEADERS = { 'Accept-Language': 'pt-BR' } as const;
+const NOMINATIM_COUNTRY = '&countrycodes=br';
+
+function getGoogleMapsApiKey(): string | undefined {
+  return import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || undefined;
+}
+
+async function geocodeWithGoogle(query: string): Promise<{ lat: number; lng: number } | null> {
+  const apiKey = getGoogleMapsApiKey();
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${encodeURIComponent(apiKey)}&region=br&language=pt-BR`,
+    );
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as {
+      status?: string;
+      results?: Array<{ geometry: { location: { lat: number; lng: number } } }>;
+    };
+
+    if (data.status === 'OK' && data.results?.[0]) {
+      return {
+        lat: data.results[0].geometry.location.lat,
+        lng: data.results[0].geometry.location.lng,
+      };
+    }
+  } catch (error) {
+    console.warn('Google geocode failed', error);
+  }
+
+  return null;
+}
+
+async function geocodeWithNominatim(
+  query: string,
+  limit = 1,
+): Promise<Array<{ lat: number; lng: number }>> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1${NOMINATIM_COUNTRY}&q=${encodeURIComponent(query)}&limit=${limit}`,
+      { headers: NOMINATIM_HEADERS },
+    );
+
+    if (!response.ok) return [];
+
+    const data = (await response.json()) as Array<{ lat: string; lon: string }>;
+    return data.map((entry) => ({
+      lat: parseFloat(entry.lat),
+      lng: parseFloat(entry.lon),
+    }));
+  } catch (error) {
+    console.warn('Nominatim search failed', error);
+    return [];
+  }
+}
+
+function pickClosestCandidate(
+  candidates: Array<{ lat: number; lng: number }>,
+  reference?: { lat: number; lng: number },
+): { lat: number; lng: number } | null {
+  if (candidates.length === 0) return null;
+  if (!reference) return candidates[0];
+
+  return candidates.reduce((best, candidate) => {
+    const bestDistance = calculateHaversineDistanceKm(reference.lat, reference.lng, best.lat, best.lng);
+    const candidateDistance = calculateHaversineDistanceKm(
+      reference.lat,
+      reference.lng,
+      candidate.lat,
+      candidate.lng,
+    );
+    return candidateDistance < bestDistance ? candidate : best;
+  });
+}
 
 // Preset popular locations for instant seamless suggestions
 export const POPULAR_LOCATIONS: LocationPoint[] = [
@@ -266,7 +344,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<ReverseG
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&lat=${lat}&lon=${lng}`,
-      { headers: { 'Accept-Language': 'pt-BR' } },
+      { headers: NOMINATIM_HEADERS },
     );
     if (response.ok) {
       const data = (await response.json()) as {
@@ -340,27 +418,23 @@ function formatAddressWithNumberParts(
   return `${street}${numberPart}${complementPart}${locationTail ? `, ${locationTail}` : ''}${cepPart}`;
 }
 
-/** Geocodes a street + number via Nominatim for precise coordinates. */
+/** Geocodes a street + number via Google (se configurado) ou Nominatim. */
 export async function geocodeLocationWithNumber(
   base: LocationPoint,
   number: string,
   complement = '',
 ): Promise<LocationPoint> {
   const street = base.address.split(',')[0]?.trim() || base.address;
-  const query = [street, number.trim(), base.district, base.city, base.state, 'Brasil']
-    .filter(Boolean)
-    .join(', ');
+  const queries = [
+    [number.trim(), street, base.district, base.city, base.state, 'Brasil'].filter(Boolean).join(', '),
+    [street, number.trim(), base.district, base.city, base.state, 'Brasil'].filter(Boolean).join(', '),
+  ];
 
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=1`,
-      { headers: { 'Accept-Language': 'pt-BR' } },
-    );
-
-    if (response.ok) {
-      const data = (await response.json()) as Array<{ lat: string; lon: string }>;
-      if (data.length > 0) {
-        const address = formatAddressWithNumberParts(
+  for (const query of queries) {
+    const googleCoords = await geocodeWithGoogle(query);
+    if (googleCoords) {
+      return {
+        address: formatAddressWithNumberParts(
           street,
           number,
           complement,
@@ -368,21 +442,41 @@ export async function geocodeLocationWithNumber(
           base.city ?? '',
           base.state ?? '',
           base.cep,
-        );
-
-        return {
-          address,
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon),
-          city: base.city,
-          state: base.state,
-          district: base.district,
-          cep: base.cep,
-        };
-      }
+        ),
+        lat: googleCoords.lat,
+        lng: googleCoords.lng,
+        city: base.city,
+        state: base.state,
+        district: base.district,
+        cep: base.cep,
+      };
     }
-  } catch (error) {
-    console.warn('Geocode with number failed', error);
+
+    const nominatimCandidates = await geocodeWithNominatim(query, 3);
+    const reference =
+      Number.isFinite(base.lat) && Number.isFinite(base.lng) && (base.lat !== 0 || base.lng !== 0)
+        ? { lat: base.lat, lng: base.lng }
+        : undefined;
+    const best = pickClosestCandidate(nominatimCandidates, reference);
+    if (best) {
+      return {
+        address: formatAddressWithNumberParts(
+          street,
+          number,
+          complement,
+          base.district ?? '',
+          base.city ?? '',
+          base.state ?? '',
+          base.cep,
+        ),
+        lat: best.lat,
+        lng: best.lng,
+        city: base.city,
+        state: base.state,
+        district: base.district,
+        cep: base.cep,
+      };
+    }
   }
 
   throw new Error('Endereço não localizado');
@@ -482,38 +576,47 @@ async function geocodeAddressWithoutNumber(fields: AddressFormInput): Promise<Lo
     .filter(Boolean)
     .join(', ');
 
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=1`,
-      { headers: { 'Accept-Language': 'pt-BR' } },
-    );
+  const googleCoords = await geocodeWithGoogle(query);
+  if (googleCoords) {
+    return {
+      address: formatAddressWithNumberParts(
+        street,
+        'S/N',
+        fields.complement,
+        fields.district.trim(),
+        fields.city.trim(),
+        fields.state.trim(),
+        formatCepMask(fields.cep),
+      ),
+      lat: googleCoords.lat,
+      lng: googleCoords.lng,
+      city: fields.city.trim(),
+      state: fields.state.trim(),
+      district: fields.district.trim(),
+      cep: formatCepMask(fields.cep),
+    };
+  }
 
-    if (response.ok) {
-      const data = (await response.json()) as Array<{ lat: string; lon: string }>;
-      if (data.length > 0) {
-        const address = formatAddressWithNumberParts(
-          street,
-          'S/N',
-          fields.complement,
-          fields.district.trim(),
-          fields.city.trim(),
-          fields.state.trim(),
-          formatCepMask(fields.cep),
-        );
-
-        return {
-          address,
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon),
-          city: fields.city.trim(),
-          state: fields.state.trim(),
-          district: fields.district.trim(),
-          cep: formatCepMask(fields.cep),
-        };
-      }
-    }
-  } catch (error) {
-    console.warn('Geocode without number failed', error);
+  const nominatimCandidates = await geocodeWithNominatim(query, 3);
+  const best = nominatimCandidates[0];
+  if (best) {
+    return {
+      address: formatAddressWithNumberParts(
+        street,
+        'S/N',
+        fields.complement,
+        fields.district.trim(),
+        fields.city.trim(),
+        fields.state.trim(),
+        formatCepMask(fields.cep),
+      ),
+      lat: best.lat,
+      lng: best.lng,
+      city: fields.city.trim(),
+      state: fields.state.trim(),
+      district: fields.district.trim(),
+      cep: formatCepMask(fields.cep),
+    };
   }
 
   throw new Error('Endereço não localizado. Confira logradouro, bairro e CEP.');

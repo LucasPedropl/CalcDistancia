@@ -8,6 +8,7 @@ interface ClienteActiveOrderCardProps {
   theme?: ThemeMode;
   onViewOrder?: () => void;
   onCancelOrder?: () => void;
+  isSelected?: boolean;
   compact?: boolean;
 }
 
@@ -16,6 +17,7 @@ export function ClienteActiveOrderCard({
   theme = 'light',
   onViewOrder,
   onCancelOrder,
+  isSelected = false,
   compact = false,
 }: ClienteActiveOrderCardProps) {
   const isDark = theme === 'dark';
@@ -23,8 +25,12 @@ export function ClienteActiveOrderCard({
 
   return (
     <div
-      className={`rounded-xl border p-4 ${
-        isAccepted
+      className={`rounded-xl border p-4 transition-all ${
+        isSelected
+          ? isDark
+            ? 'border-white bg-zinc-900 ring-2 ring-white/20'
+            : 'border-slate-900 bg-white ring-2 ring-slate-900/10'
+          : isAccepted
           ? isDark
             ? 'border-emerald-800 bg-emerald-950/30'
             : 'border-emerald-300 bg-emerald-50'

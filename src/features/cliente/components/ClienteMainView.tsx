@@ -32,9 +32,10 @@ interface ClienteMainViewProps {
   onLogout: () => void;
   userName?: string;
   userEmail?: string;
-  clientActiveOrder?: DeliveryOrder | null;
-  onViewActiveOrder?: () => void;
-  onCancelActiveOrder?: () => void;
+  clientActiveOrders?: DeliveryOrder[];
+  selectedTrackedOrderId?: string | null;
+  onViewActiveOrder?: (orderId: string) => void;
+  onCancelActiveOrder?: (orderId: string) => void;
   isRouteLoading?: boolean;
   routePolyline?: [number, number][];
   canStartRide?: boolean;
@@ -64,7 +65,8 @@ export function ClienteMainView({
   onLogout,
   userName,
   userEmail,
-  clientActiveOrder = null,
+  clientActiveOrders = [],
+  selectedTrackedOrderId = null,
   onViewActiveOrder,
   onCancelActiveOrder,
   isRouteLoading = false,
@@ -122,7 +124,8 @@ export function ClienteMainView({
             onToggleFavorite={onToggleFavorite}
             motoboySearchRadiusKm={motoboySearchRadiusKm}
             onMotoboySearchRadiusChange={onMotoboySearchRadiusChange}
-            clientActiveOrder={clientActiveOrder}
+            clientActiveOrders={clientActiveOrders}
+            selectedTrackedOrderId={selectedTrackedOrderId}
             onViewActiveOrder={onViewActiveOrder}
             onCancelActiveOrder={onCancelActiveOrder}
             isRouteLoading={isRouteLoading}

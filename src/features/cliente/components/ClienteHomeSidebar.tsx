@@ -29,9 +29,10 @@ interface ClienteHomeSidebarProps {
   onToggleFavorite?: (motoboyId: string) => void;
   motoboySearchRadiusKm?: number;
   onMotoboySearchRadiusChange?: (radiusKm: number) => void;
-  clientActiveOrder?: DeliveryOrder | null;
-  onViewActiveOrder?: () => void;
-  onCancelActiveOrder?: () => void;
+  clientActiveOrders?: DeliveryOrder[];
+  selectedTrackedOrderId?: string | null;
+  onViewActiveOrder?: (orderId: string) => void;
+  onCancelActiveOrder?: (orderId: string) => void;
   isRouteLoading?: boolean;
   canStartRide?: boolean;
   onStartRide?: () => void;
@@ -55,7 +56,8 @@ export function ClienteHomeSidebar({
   onToggleFavorite,
   motoboySearchRadiusKm = 15,
   onMotoboySearchRadiusChange,
-  clientActiveOrder = null,
+  clientActiveOrders = [],
+  selectedTrackedOrderId = null,
   onViewActiveOrder,
   onCancelActiveOrder,
   isRouteLoading = false,
@@ -104,14 +106,28 @@ export function ClienteHomeSidebar({
         </div>
       </div>
 
-      {clientActiveOrder && (
+      {clientActiveOrders.length > 0 && (
         <div className={`border-b p-6 ${isDark ? 'border-zinc-800' : 'border-slate-200'}`}>
-          <ClienteActiveOrderCard
-            order={clientActiveOrder}
-            theme={theme}
-            onViewOrder={onViewActiveOrder}
-            onCancelOrder={onCancelActiveOrder}
-          />
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Pedidos em andamento
+            </h3>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+              {clientActiveOrders.length}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {clientActiveOrders.map((order) => (
+              <ClienteActiveOrderCard
+                key={order.id}
+                order={order}
+                theme={theme}
+                isSelected={selectedTrackedOrderId === order.id}
+                onViewOrder={onViewActiveOrder ? () => onViewActiveOrder(order.id) : undefined}
+                onCancelOrder={onCancelActiveOrder ? () => onCancelActiveOrder(order.id) : undefined}
+              />
+            ))}
+          </div>
         </div>
       )}
 

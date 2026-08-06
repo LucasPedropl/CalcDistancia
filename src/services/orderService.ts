@@ -140,16 +140,20 @@ export function getOrderById(orderId: string): DeliveryOrder | undefined {
   return loadOrdersFromStorage().find((order) => order.id === orderId);
 }
 
+const ACTIVE_ORDER_STATUSES: DeliveryOrder['status'][] = ['PENDING', 'ACCEPTED', 'PICKED_UP'];
+
+function isActiveOrderStatus(status: DeliveryOrder['status']): boolean {
+  return ACTIVE_ORDER_STATUSES.includes(status);
+}
+
+export function getActiveOrdersForClient(clientId: string): DeliveryOrder[] {
+  return loadOrdersFromStorage()
+    .filter((order) => order.clientId === clientId && isActiveOrderStatus(order.status))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
 export function getActiveOrderForClient(clientId: string): DeliveryOrder | null {
-  return (
-    loadOrdersFromStorage().find(
-      (order) =>
-        order.clientId === clientId &&
-        (order.status === 'PENDING' ||
-          order.status === 'ACCEPTED' ||
-          order.status === 'PICKED_UP'),
-    ) ?? null
-  );
+  return getActiveOrdersForClient(clientId)[0] ?? null;
 }
 
 export function getActiveOrderForMotoboy(motoboyId: string): DeliveryOrder | null {

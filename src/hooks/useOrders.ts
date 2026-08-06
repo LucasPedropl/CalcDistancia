@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { DeliveryOrder } from '../types/order';
 import {
   getAllOrders,
-  getActiveOrderForClient,
+  getActiveOrdersForClient,
   getActiveOrderForMotoboy,
   getActiveOrderForRecipient,
   getOrdersForCondominium,
@@ -66,14 +66,19 @@ export function useActiveOrderForMotoboy(motoboyId: string | undefined): Deliver
 }
 
 export function useActiveOrderForClient(clientId: string | undefined): DeliveryOrder | null {
-  const [order, setOrder] = useState<DeliveryOrder | null>(null);
+  const orders = useActiveOrdersForClient(clientId);
+  return orders[0] ?? null;
+}
+
+export function useActiveOrdersForClient(clientId: string | undefined): DeliveryOrder[] {
+  const [orders, setOrders] = useState<DeliveryOrder[]>([]);
 
   const refresh = useCallback(() => {
     if (!clientId) {
-      setOrder(null);
+      setOrders([]);
       return;
     }
-    setOrder(getActiveOrderForClient(clientId));
+    setOrders(getActiveOrdersForClient(clientId));
   }, [clientId]);
 
   useEffect(() => {
@@ -81,7 +86,7 @@ export function useActiveOrderForClient(clientId: string | undefined): DeliveryO
     return subscribeToOrders(refresh);
   }, [refresh]);
 
-  return order;
+  return orders;
 }
 
 export function useActiveOrderForRecipient(

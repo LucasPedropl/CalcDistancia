@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +23,25 @@ export function CondominioDashboard() {
   useMotoboySimulationTicker();
 
   const activeDeliveries = useOrdersForCondominium(user?.id, profile?.address ?? null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  const selectedOrder = useMemo(() => {
+    if (activeDeliveries.length === 0) return null;
+    if (selectedOrderId) {
+      return activeDeliveries.find((order) => order.id === selectedOrderId) ?? activeDeliveries[0];
+    }
+    return activeDeliveries[0];
+  }, [activeDeliveries, selectedOrderId]);
+
+  useEffect(() => {
+    if (activeDeliveries.length === 0) {
+      setSelectedOrderId(null);
+      return;
+    }
+    if (!selectedOrderId || !activeDeliveries.some((order) => order.id === selectedOrderId)) {
+      setSelectedOrderId(activeDeliveries[0].id);
+    }
+  }, [activeDeliveries, selectedOrderId]);
 
   if (!user) return null;
 
@@ -65,8 +84,21 @@ export function CondominioDashboard() {
         mapLabel="Mapa"
         panelLabel="Entregas"
         defaultMobileView="panel"
-        panel={<CondominioDeliveriesSidebar profile={profile} activeDeliveries={activeDeliveries} />}
-        map={<CondominioMap profile={profile} activeDeliveries={activeDeliveries} />}
+        panel={
+          <CondominioDeliveriesSidebar
+            profile={profile}
+            activeDeliveries={activeDeliveries}
+            selectedOrderId={selectedOrder?.id ?? null}
+            onSelectOrder={setSelectedOrderId}
+          />
+        }
+        map={
+          <CondominioMap
+            profile={profile}
+            activeDeliveries={activeDeliveries}
+            selectedOrder={selectedOrder}
+          />
+        }
       />
 
       <p className="shrink-0 border-t border-slate-200 bg-white py-2 text-center text-xs text-slate-400">

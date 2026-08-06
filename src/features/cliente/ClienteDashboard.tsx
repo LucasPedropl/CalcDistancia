@@ -16,7 +16,7 @@ import {
   pushMotoboyNotification,
 } from '../../services/motoboyNotificationService';
 import { whatsappApi } from '../../services/whatsappApi';
-import { useActiveOrderForClient } from '../../hooks/useOrders';
+import { useActiveOrdersForClient } from '../../hooks/useOrders';
 import { useMotoboySimulationTicker, useMotoboySimulationRefresh } from '../../hooks/useMotoboySimulation';
 import { buildRouteDataFromOrder } from '../../utils/orderRoute';
 import { useAuth } from '../../context/AuthContext';
@@ -64,26 +64,6 @@ function reverseGeocodeToOriginFields(base: ReverseGeocodeResult): Partial<Addre
   };
 }
 
-function buildDestinationFromMapPick(
-  lat: number,
-  lng: number,
-  base: ReverseGeocodeResult,
-): LocationPoint {
-  const address =
-    [base.street, base.district, base.city, base.state].filter(Boolean).join(', ') ||
-    base.displayName;
-
-  return {
-    lat,
-    lng,
-    address,
-    city: base.city,
-    state: base.state,
-    district: base.district,
-    cep: base.cep,
-  };
-}
-
 export function ClienteDashboard() {
   const { user, logout } = useAuth();
   const [viewMode, setViewMode] = useState<ClientViewMode>('MAIN');
@@ -116,7 +96,12 @@ export function ClienteDashboard() {
   const [destinationMeta, setDestinationMeta] = useState<DestinationConfirmMeta | undefined>();
   const [isDestinationConfirmed, setIsDestinationConfirmed] = useState(false);
 
-  const clientActiveOrder = useActiveOrderForClient(user?.id);
+  const clientActiveOrders = useActiveOrdersForClient(user?.id);
+  const [trackedOrderId, setTrackedOrderId] = useState<string | null>(null);
+  const trackedOrder = useMemo(
+    () => clientActiveOrders.find((order) => order.id === trackedOrderId) ?? null,
+    [clientActiveOrders, trackedOrderId],
+  );
   const acceptedToastShownRef = useRef<string | null>(null);
 
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
@@ -248,7 +233,10 @@ export function ClienteDashboard() {
     setIsDestinationConfirmed(true);
   };
 
-  const openActiveOrderView = (order: NonNullable<typeof clientActiveOrder>) => {
+  const openActiveOrderView = (orderId: string) => {
+    const order = clientActiveOrders.find((entry) => entry.id === orderId);
+    if (!order) return;
+    setTrackedOrderId(order.id);
     setOrigin(order.origin as SavedAddress);
     setDestination(order.destination);
     setRouteData(buildRouteDataFromOrder(order));
@@ -258,8 +246,8 @@ export function ClienteDashboard() {
   };
 
   const handleSimulateAccept = () => {
-    if (!clientActiveOrder || clientActiveOrder.status !== 'PENDING') return;
-    const accepted = simulateOrderAcceptance(clientActiveOrder.id);
+    if (!trackedOrder || trackedOrder.status !== 'PENDING') return;
+    const accepted = simulateOrderAcceptance(trackedOrder.id);
     if (accepted) {
       showToast(`${accepted.acceptedMotoboyName} aceitou o pedido (simulado).`, 'success');
     } else {
@@ -267,31 +255,35 @@ export function ClienteDashboard() {
     }
   };
 
-  const handleCancelActiveOrder = () => {
-    if (!clientActiveOrder) return;
+  const handleCancelActiveOrder = (orderId: string) => {
+    const order = clientActiveOrders.find((entry) => entry.id === orderId);
+    if (!order) return;
+
     const confirmed = window.confirm(
-      clientActiveOrder.status === 'ACCEPTED'
+      order.status === 'ACCEPTED'
         ? 'Deseja realmente cancelar esta corrida em andamento?'
         : 'Deseja cancelar este pedido aguardando motoboy?',
     );
     if (!confirmed) return;
 
-    cancelOrder(clientActiveOrder.id, 'CLIENT');
-    setDestination(null);
-    setDestinationMeta(undefined);
-    setIsDestinationConfirmed(false);
-    setRouteData(null);
-    setShowRouteView(false);
+    cancelOrder(orderId, 'CLIENT');
+
+    if (trackedOrderId === orderId) {
+      setDestination(null);
+      setDestinationMeta(undefined);
+      setIsDestinationConfirmed(false);
+      setRouteData(null);
+      setShowRouteView(false);
+      setTrackedOrderId(null);
+    }
+
     setViewMode('MAIN');
     showToast('Pedido cancelado.', 'info');
   };
 
   const handleStartRide = () => {
-    if (clientActiveOrder) {
-      openActiveOrderView(clientActiveOrder);
-      return;
-    }
     if (!origin || !destination || !routeData || isRouteLoading) return;
+    setTrackedOrderId(null);
     setShowRouteView(true);
   };
 
@@ -308,6 +300,7 @@ export function ClienteDashboard() {
     setIsDestinationConfirmed(false);
     setRouteData(null);
     setShowRouteView(false);
+    setTrackedOrderId(null);
     setSelectedMotoboyId(null);
     setViewMode('MAIN');
   };
@@ -385,18 +378,23 @@ export function ClienteDashboard() {
     } else {
       showToast('Pedido enviado globalmente! Aguardando um motoboy aceitar.', 'info');
     }
+
+    setTrackedOrderId(order.id);
+    setShowRouteView(true);
   };
 
   useEffect(() => {
+    if (!trackedOrder) return;
+
     if (
-      clientActiveOrder?.status === 'ACCEPTED' &&
-      clientActiveOrder.acceptedMotoboyName &&
-      acceptedToastShownRef.current !== clientActiveOrder.id
+      trackedOrder.status === 'ACCEPTED' &&
+      trackedOrder.acceptedMotoboyName &&
+      acceptedToastShownRef.current !== trackedOrder.id
     ) {
-      acceptedToastShownRef.current = clientActiveOrder.id;
-      showToast(`${clientActiveOrder.acceptedMotoboyName} aceitou seu pedido!`, 'success');
+      acceptedToastShownRef.current = trackedOrder.id;
+      showToast(`${trackedOrder.acceptedMotoboyName} aceitou seu pedido!`, 'success');
     }
-  }, [clientActiveOrder]);
+  }, [trackedOrder]);
 
   const handleLogout = () => {
     logout();
@@ -428,7 +426,6 @@ export function ClienteDashboard() {
       if (target === 'origin') {
         showToast('A origem deve ser um endereço cadastrado. Selecione na lista acima.', 'info');
       } else {
-        setDestination(buildDestinationFromMapPick(mapContextMenu.lat, mapContextMenu.lng, base));
         setDestinationMeta(undefined);
         setIsDestinationConfirmed(false);
         setShowRouteView(false);
@@ -493,9 +490,10 @@ export function ClienteDashboard() {
           onLogout={handleLogout}
           userName={user.name}
           userEmail={user.email}
-          clientActiveOrder={clientActiveOrder}
-          onViewActiveOrder={clientActiveOrder ? () => openActiveOrderView(clientActiveOrder) : undefined}
-          onCancelActiveOrder={clientActiveOrder ? handleCancelActiveOrder : undefined}
+          clientActiveOrders={clientActiveOrders}
+          selectedTrackedOrderId={trackedOrderId}
+          onViewActiveOrder={openActiveOrderView}
+          onCancelActiveOrder={handleCancelActiveOrder}
           isRouteLoading={isRouteLoading}
           routePolyline={routeData?.polyline}
           canStartRide={canStartRide}
@@ -548,11 +546,11 @@ export function ClienteDashboard() {
           availableMotoboys={deliveryMotoboys}
           selectedMotoboyId={selectedMotoboyId}
           onSelectMotoboy={setSelectedMotoboyId}
-          pendingOrder={clientActiveOrder}
+          pendingOrder={trackedOrder}
           onNewOrder={handleNewOrder}
-          onCancelOrder={clientActiveOrder ? handleCancelActiveOrder : undefined}
+          onCancelOrder={trackedOrder ? () => handleCancelActiveOrder(trackedOrder.id) : undefined}
           onMapContextMenu={handleMapContextMenu}
-          onSimulateAccept={clientActiveOrder?.status === 'PENDING' ? handleSimulateAccept : undefined}
+          onSimulateAccept={trackedOrder?.status === 'PENDING' ? handleSimulateAccept : undefined}
         />
       )}
 
@@ -613,13 +611,13 @@ export function ClienteDashboard() {
         </div>
       )}
 
-      {(clientActiveOrder?.status === 'ACCEPTED' || clientActiveOrder?.status === 'PICKED_UP') && user && (
+      {(trackedOrder?.status === 'ACCEPTED' || trackedOrder?.status === 'PICKED_UP') && user && (
         <OrderChatWidget
-          orderId={clientActiveOrder.id}
+          orderId={trackedOrder.id}
           currentUserId={user.id}
           currentUserName={user.name}
           currentUserRole="CLIENT"
-          otherPartyName={clientActiveOrder.acceptedMotoboyName ?? 'Motoboy'}
+          otherPartyName={trackedOrder.acceptedMotoboyName ?? 'Motoboy'}
           theme={theme}
         />
       )}
