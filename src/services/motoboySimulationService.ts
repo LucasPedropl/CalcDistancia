@@ -108,7 +108,6 @@ function requestIdleRoute(
   motoboyId: string,
   lat: number,
   lng: number,
-  states: Record<string, MotoboySimulationState>,
 ): void {
   if (idleRouteFetches.has(motoboyId)) return;
 
@@ -179,7 +178,7 @@ export function tickMotoboySimulation(): void {
 
     if (nextMode === 'idle') {
       if (!idleRoutePolyline || idleRoutePolyline.length < 2) {
-        requestIdleRoute(motoboy.id, current.lat, current.lng, states);
+        requestIdleRoute(motoboy.id, current.lat, current.lng);
       }
 
       if (idleRoutePolyline && idleRoutePolyline.length > 1) {

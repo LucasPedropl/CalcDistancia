@@ -15,6 +15,7 @@ import { getMotoboyById } from '../../services/motoboyService';
 import { whatsappApi } from '../../services/whatsappApi';
 
 import { fetchAndSaveOrderPickupRoute } from '../../services/orderRoutePlanning';
+import { formatTrackingWhatsAppFooter } from '../../utils/trackingUrl';
 
 import { useActiveOrderForMotoboy, useOpenOrdersForMotoboy } from '../../hooks/useOrders';
 
