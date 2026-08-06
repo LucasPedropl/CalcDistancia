@@ -31,13 +31,15 @@ interface AddressRegistrationFormProps {
   numberRequired?: boolean;
   /** Exibe checkbox "Endereço sem número" (destino). */
   allowNoStreetNumberToggle?: boolean;
+  /** Nome do condomínio/estabelecimento para geocoding via Google Places. */
+  establishmentName?: string;
 }
 
 export const AddressRegistrationForm = forwardRef<
   AddressRegistrationFormHandle,
   AddressRegistrationFormProps
 >(function AddressRegistrationForm(
-  { theme = 'light', initialFields, onValidityChange, enableStreetSearch = false, numberRequired = true, allowNoStreetNumberToggle = false },
+  { theme = 'light', initialFields, onValidityChange, enableStreetSearch = false, numberRequired = true, allowNoStreetNumberToggle = false, establishmentName },
   ref,
 ) {
   const isDark = theme === 'dark';
@@ -174,6 +176,7 @@ export const AddressRegistrationForm = forwardRef<
       try {
         return await geocodeAddressForm(effectiveFields, {
           allowNoStreetNumber: !numberRequired || hasNoStreetNumber,
+          establishmentName,
         });
       } catch {
         setFormError('Não foi possível localizar o endereço. Verifique os dados informados.');

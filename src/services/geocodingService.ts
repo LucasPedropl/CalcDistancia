@@ -541,8 +541,14 @@ export interface AddressFormInput {
 /** Monta LocationPoint geocodificado a partir do formulário completo. */
 export async function geocodeAddressForm(
   fields: AddressFormInput,
-  options?: { allowNoStreetNumber?: boolean },
+  options?: { allowNoStreetNumber?: boolean; establishmentName?: string },
 ): Promise<LocationPoint> {
+  const { resolveAddressWithGoogleMaps } = await import('./googleMapsGeocoding');
+  const googleResult = await resolveAddressWithGoogleMaps(fields, options);
+  if (googleResult) {
+    return googleResult;
+  }
+
   const base: LocationPoint = {
     address: fields.street.trim(),
     lat: 0,
