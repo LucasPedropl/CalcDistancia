@@ -5,6 +5,14 @@ export interface BixsInstance {
   id: number;
   name?: string;
   status?: string;
+  phone_number?: string;
+}
+
+export interface BixsSendMessageResponse {
+  success?: boolean;
+  id?: string;
+  message?: string;
+  error?: string;
 }
 
 export interface SendWhatsAppMessageParams {
@@ -18,10 +26,43 @@ export interface SendWhatsAppMessageParams {
 async function parseApiError(response: Response, fallback: string): Promise<string> {
   try {
     const body = (await response.json()) as { error?: string; message?: string };
-    return body.error ?? body.message ?? fallback;
+    const raw = body.error ?? body.message ?? fallback;
+    return mapBixsWhatsappError(raw);
   } catch {
     return `${fallback} (HTTP ${response.status})`;
   }
+}
+
+function mapBixsWhatsappError(message: string): string {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('error 463') || normalized.includes('463')) {
+    return 'O WhatsApp não conseguiu entregar para este número. Confirme se ele tem WhatsApp ativo e se aceita mensagens de contas comerciais.';
+  }
+
+  if (normalized.includes('not connected') || normalized.includes('disconnected')) {
+    return 'WhatsApp da empresa desconectou. Acesse o painel admin e escaneie o QR Code novamente.';
+  }
+
+  return message;
+}
+
+function normalizePhoneDigits(phone: string): string {
+  return phone.replace(/\D/g, '');
+}
+
+function phonesAreEquivalent(phoneA: string, phoneB: string): boolean {
+  const a = normalizePhoneDigits(phoneA);
+  const b = normalizePhoneDigits(phoneB);
+  if (!a || !b) return false;
+  if (a === b) return true;
+
+  const stripCountry = (value: string) => (value.startsWith('55') ? value.slice(2) : value);
+  const localA = stripCountry(a);
+  const localB = stripCountry(b);
+  if (localA === localB) return true;
+
+  return localA.endsWith(localB) || localB.endsWith(localA);
 }
 
 export async function loginBixs(): Promise<string> {
@@ -190,9 +231,14 @@ export async function sendWhatsAppMessage(
   if (!response.ok) {
     throw new Error(await parseApiError(response, 'Falha ao enviar mensagem WhatsApp'));
   }
+
+  const data = (await response.json()) as BixsSendMessageResponse;
+  if (data.success === false) {
+    throw new Error(mapBixsWhatsappError(data.message ?? data.error ?? 'Falha ao enviar mensagem WhatsApp'));
+  }
 }
 
-export async function getActiveInstanceId(token: string): Promise<number> {
+export async function getConnectedInstance(token: string): Promise<BixsInstance> {
   const instances = await listInstances(token);
 
   if (!instances.length) {
@@ -201,18 +247,47 @@ export async function getActiveInstanceId(token: string): Promise<number> {
     );
   }
 
-  return instances[0].id;
+  const connectedFromList = instances.find((instance) => isInstanceConnected(instance.status ?? ''));
+  if (connectedFromList) {
+    return connectedFromList;
+  }
+
+  for (const instance of instances) {
+    const status = await getInstanceStatus(token, instance.id);
+    if (isInstanceConnected(status)) {
+      return { ...instance, status };
+    }
+  }
+
+  throw new Error(
+    'WhatsApp da empresa não está conectado. Acesse o painel administrativo e escaneie o QR Code.',
+  );
+}
+
+export async function getConnectedInstancePhone(token: string): Promise<string | null> {
+  const instance = await getConnectedInstance(token);
+  return instance.phone_number ?? null;
+}
+
+export function assertRecipientDiffersFromConnectedPhone(
+  recipientPhone: string,
+  connectedPhone: string | null | undefined,
+): void {
+  if (!connectedPhone) return;
+
+  if (phonesAreEquivalent(recipientPhone, connectedPhone)) {
+    throw new Error(
+      'O telefone do destinatário é o mesmo número conectado no painel admin. O WhatsApp da empresa não pode enviar mensagem para si mesmo — informe o telefone do cliente final.',
+    );
+  }
+}
+
+export async function getActiveInstanceId(token: string): Promise<number> {
+  const instance = await getConnectedInstance(token);
+  return instance.id;
 }
 
 export async function assertWhatsAppConnected(token: string): Promise<number> {
-  const instanceId = await getActiveInstanceId(token);
-  const status = await getInstanceStatus(token, instanceId);
-
-  if (!isInstanceConnected(status)) {
-    throw new Error(
-      'WhatsApp da empresa não está conectado. Acesse o painel administrativo e escaneie o QR Code.',
-    );
-  }
-
-  return instanceId;
+  const instance = await getConnectedInstance(token);
+  return instance.id;
 }

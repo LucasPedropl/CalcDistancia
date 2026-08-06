@@ -1,5 +1,7 @@
 import {
+  assertRecipientDiffersFromConnectedPhone,
   assertWhatsAppConnected,
+  getConnectedInstancePhone,
   loginBixs,
   sendWhatsAppMessage,
   uploadMedia,
@@ -29,6 +31,8 @@ export const whatsappApi = {
 
     const token = await loginBixs();
     const instanceId = await assertWhatsAppConnected(token);
+    const connectedPhone = await getConnectedInstancePhone(token);
+    assertRecipientDiffersFromConnectedPhone(payload.to, connectedPhone);
 
     let documentUrl = payload.document_url;
 

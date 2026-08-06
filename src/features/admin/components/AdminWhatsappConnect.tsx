@@ -4,12 +4,14 @@ import { AlertCircle, CheckCircle2, Loader2, MessageCircle, RefreshCw, Smartphon
 import {
   createInstance,
   deleteInstance,
+  getConnectedInstance,
   getInstanceQrCode,
   getInstanceStatus,
   isInstanceConnected,
   listInstances,
   loginBixs,
 } from '../../../services/bixsWhatsappService';
+import { formatPhoneMask } from '../../../utils/phoneValidation';
 import { BIXS_API_ROUTES } from '../../../constants/bixsApi';
 
 const INSTANCE_NAME_PREFIX = 'calc-distancia';
@@ -20,6 +22,7 @@ export function AdminWhatsappConnect() {
   const [statusMsg, setStatusMsg] = useState('Inicializando conexão...');
   const [instanceId, setInstanceId] = useState<number | null>(null);
   const [connectionStatus, setConnectionStatus] = useState('');
+  const [connectedPhone, setConnectedPhone] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -39,8 +42,18 @@ export function AdminWhatsappConnect() {
       if (isInstanceConnected(currentStatus)) {
         setStatusMsg('WhatsApp da empresa conectado!');
         setQrCodeData(null);
+        try {
+          const connected = await getConnectedInstance(authToken);
+          if (activeRef.current) {
+            setConnectedPhone(connected.phone_number ?? null);
+          }
+        } catch {
+          if (activeRef.current) setConnectedPhone(null);
+        }
         return;
       }
+
+      if (activeRef.current) setConnectedPhone(null);
 
       setStatusMsg('Gerando QR Code...');
       const rawCode = await getInstanceQrCode(authToken, id);
@@ -127,6 +140,7 @@ export function AdminWhatsappConnect() {
         setInstanceId(null);
         setQrCodeData(null);
         setConnectionStatus('');
+        setConnectedPhone(null);
       } catch (error) {
         console.error('Falha ao excluir instância', error);
       }
@@ -136,6 +150,9 @@ export function AdminWhatsappConnect() {
   };
 
   const connected = isInstanceConnected(connectionStatus);
+  const connectedPhoneLabel = connectedPhone
+    ? formatPhoneMask(connectedPhone.replace(/^55/, ''))
+    : null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -154,9 +171,15 @@ export function AdminWhatsappConnect() {
         </div>
 
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Requisito de cadastro</p>
-          <p className="mt-1 text-amber-800">
-            Clientes e motoboys precisam ter telefone válido no perfil para receber mensagens.
+          <p className="font-semibold">Número remetente</p>
+          {connectedPhoneLabel ? (
+            <p className="mt-1 font-mono text-base text-amber-950">{connectedPhoneLabel}</p>
+          ) : (
+            <p className="mt-1 text-amber-800">Conecte o WhatsApp para ver qual número está ativo.</p>
+          )}
+          <p className="mt-2 text-xs text-amber-700">
+            As mensagens saem deste número. O telefone do pedido precisa ser de outra pessoa — o
+            WhatsApp não entrega mensagem para o mesmo número conectado.
           </p>
         </div>
 
@@ -186,7 +209,9 @@ export function AdminWhatsappConnect() {
               <CheckCircle2 className="mb-2 h-16 w-16 text-emerald-500" />
               <p className="font-semibold text-emerald-700">WhatsApp Conectado!</p>
               <p className="mt-2 px-4 text-center text-xs text-emerald-600">
-                Pronto para enviar mensagens aos clientes e motoboys.
+                {connectedPhoneLabel
+                  ? `Enviando mensagens como ${connectedPhoneLabel}`
+                  : 'Pronto para enviar mensagens aos clientes e motoboys.'}
               </p>
             </div>
           ) : qrCodeData ? (
