@@ -9,6 +9,21 @@ import {
 const baseLayerByMap = new WeakMap<L.Map, L.Layer>();
 
 let googleMapsLoadPromise: Promise<void> | null = null;
+let googleMutantLoadPromise: Promise<void> | null = null;
+
+function ensureLeafletGlobal(): void {
+  if (typeof window === 'undefined') return;
+  (window as Window & { L: typeof L }).L = L;
+}
+
+function loadGoogleMutantPlugin(): Promise<void> {
+  if (!googleMutantLoadPromise) {
+    ensureLeafletGlobal();
+    googleMutantLoadPromise = import('leaflet.gridlayer.googlemutant').then(() => undefined);
+  }
+
+  return googleMutantLoadPromise;
+}
 
 function loadGoogleMapsApi(): Promise<void> {
   if (typeof window === 'undefined') {
@@ -27,7 +42,7 @@ function loadGoogleMapsApi(): Promise<void> {
   if (!googleMapsLoadPromise) {
     googleMapsLoadPromise = new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&loading=async`;
       script.async = true;
       script.defer = true;
       script.onload = () => resolve();
@@ -41,8 +56,14 @@ function loadGoogleMapsApi(): Promise<void> {
 
 async function createBaseLayer(provider: MapProviderId, isDark: boolean): Promise<L.Layer> {
   if (provider === 'google' && isGoogleMapsConfigured()) {
+    ensureLeafletGlobal();
     await loadGoogleMapsApi();
-    await import('leaflet.gridlayer.googlemutant');
+    await loadGoogleMutantPlugin();
+
+    if (!L.gridLayer?.googleMutant) {
+      throw new Error('Plugin Google Mutant não carregou corretamente.');
+    }
+
     return L.gridLayer.googleMutant({ type: 'roadmap', maxZoom: 21 });
   }
 
