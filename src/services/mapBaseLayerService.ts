@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import GoogleMutant from 'leaflet.gridlayer.googlemutant/src/Leaflet.GoogleMutant.mjs';
 import {
   type MapProviderId,
   getStandardTileAttribution,
@@ -9,21 +10,10 @@ import {
 const baseLayerByMap = new WeakMap<L.Map, L.Layer>();
 
 let googleMapsLoadPromise: Promise<void> | null = null;
-let googleMutantLoadPromise: Promise<void> | null = null;
 
-function ensureLeafletGlobal(): void {
-  if (typeof window === 'undefined') return;
-  (window as Window & { L: typeof L }).L = L;
-}
-
-function loadGoogleMutantPlugin(): Promise<void> {
-  if (!googleMutantLoadPromise) {
-    ensureLeafletGlobal();
-    googleMutantLoadPromise = import('leaflet.gridlayer.googlemutant').then(() => undefined);
-  }
-
-  return googleMutantLoadPromise;
-}
+type GoogleMapsInitWindow = Window & {
+  __calcDistanciaGoogleMapsInit?: () => void;
+};
 
 function loadGoogleMapsApi(): Promise<void> {
   if (typeof window === 'undefined') {
@@ -41,12 +31,21 @@ function loadGoogleMapsApi(): Promise<void> {
 
   if (!googleMapsLoadPromise) {
     googleMapsLoadPromise = new Promise((resolve, reject) => {
+      const callbackName = '__calcDistanciaGoogleMapsInit';
+      const initWindow = window as GoogleMapsInitWindow;
+
+      initWindow[callbackName] = () => {
+        delete initWindow[callbackName];
+        resolve();
+      };
+
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&loading=async&callback=${callbackName}`;
       script.async = true;
-      script.defer = true;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Falha ao carregar Google Maps.'));
+      script.onerror = () => {
+        delete initWindow[callbackName];
+        reject(new Error('Falha ao carregar Google Maps.'));
+      };
       document.head.appendChild(script);
     });
   }
@@ -54,17 +53,14 @@ function loadGoogleMapsApi(): Promise<void> {
   return googleMapsLoadPromise;
 }
 
+function createGoogleMutantLayer(): L.Layer {
+  return new GoogleMutant({ type: 'roadmap', maxZoom: 21 });
+}
+
 async function createBaseLayer(provider: MapProviderId, isDark: boolean): Promise<L.Layer> {
   if (provider === 'google' && isGoogleMapsConfigured()) {
-    ensureLeafletGlobal();
     await loadGoogleMapsApi();
-    await loadGoogleMutantPlugin();
-
-    if (!L.gridLayer?.googleMutant) {
-      throw new Error('Plugin Google Mutant não carregou corretamente.');
-    }
-
-    return L.gridLayer.googleMutant({ type: 'roadmap', maxZoom: 21 });
+    return createGoogleMutantLayer();
   }
 
   return L.tileLayer(getStandardTileUrl(isDark), {
