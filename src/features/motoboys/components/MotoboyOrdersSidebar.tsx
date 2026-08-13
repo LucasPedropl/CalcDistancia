@@ -3,7 +3,7 @@ import type { DeliveryOrder } from '../../../types/order';
 import type { ThemeMode } from '../../../types';
 import { formatCurrency } from '../../../services/pricingService';
 import { formatDurationMinutes } from '../../../utils/formatDuration';
-import { Search, Package, MapPin, CheckCircle, Clock, Navigation, Map, X, XCircle, Flag } from 'lucide-react';
+import { Search, Package, MapPin, CheckCircle, Clock, Navigation, Map, User, X, XCircle, Flag } from 'lucide-react';
 import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentButton';
 import { OrderPaymentStatusBadge } from '../../../components/payment/OrderPaymentStatusBadge';
 import { MotoboyCondominiumAccessCard } from './MotoboyCondominiumAccessCard';
@@ -65,6 +65,19 @@ function OrderCardDetails({
           <div>
             <span className="text-[10px] font-semibold uppercase tracking-wider">Destino</span>
             <p className="font-medium">{order.destination.address}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <User className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider">
+              Entregar para
+            </span>
+            <p className="font-medium">
+              {order.recipientClientName ?? 'Cliente'}
+              {order.condominiumUnitLabel ? ` · ${order.condominiumUnitLabel}` : ''}
+            </p>
+            {order.recipientClientPhone && <p>{order.recipientClientPhone}</p>}
           </div>
         </div>
       </div>
@@ -172,7 +185,7 @@ export function MotoboyOrdersSidebar({
             <OrderCardDetails order={activeOrder} isDark={isDark} />
             <p className={`mt-3 text-xs ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
               {activeOrder.status === 'PICKED_UP'
-                ? 'No destino, cobre o cliente se o pagamento ainda estiver pendente.'
+                ? 'No destino, finalize com o código de rastreio do cliente e confirme o pagamento se foi fora do app.'
                 : 'Rota fixada no mapa. Use o chat para falar com o cliente.'}
             </p>
             <OrderPixPaymentButton

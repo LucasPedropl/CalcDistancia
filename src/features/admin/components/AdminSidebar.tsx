@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   Building2,
   FileSignature,
+  History,
   LayoutDashboard,
   MessageCircle,
   Package,
@@ -15,6 +16,7 @@ interface AdminSidebarProps {
 
 const NAV_ITEMS = [
   { to: '/admin', label: 'Visão geral', icon: LayoutDashboard, end: true },
+  { to: '/admin/corridas', label: 'Corridas', icon: History, end: false },
   { to: '/admin/condominios', label: 'Condomínios', icon: Building2, end: false },
   { to: '/admin/planos', label: 'Planos', icon: Sparkles, end: false },
   { to: '/admin/pagamentos', label: 'Pagamentos', icon: Wallet, end: false },

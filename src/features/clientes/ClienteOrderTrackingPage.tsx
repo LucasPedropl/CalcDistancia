@@ -5,6 +5,7 @@ import { getOrderByTrackingCode, subscribeToOrders } from '../../services/orderS
 import { subscribeToMotoboySimulation } from '../../services/motoboySimulationService';
 import { ClienteTrackingMap } from './components/ClienteTrackingMap';
 import { ClienteTrackingSidebar } from './components/ClienteTrackingSidebar';
+import { ClientePostDeliveryPaymentGate } from './components/ClientePostDeliveryPaymentGate';
 import { useMotoboySimulationTicker } from '../../hooks/useMotoboySimulation';
 import { AppViewport } from '../../components/layout/AppViewport';
 import { ResponsiveMapShell } from '../../components/layout/ResponsiveMapShell';
@@ -84,6 +85,7 @@ export function ClienteOrderTrackingPage() {
           )
         }
       />
+      <ClientePostDeliveryPaymentGate order={order} />
     </AppViewport>
   );
 }

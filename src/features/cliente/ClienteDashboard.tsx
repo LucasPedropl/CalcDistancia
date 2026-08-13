@@ -27,6 +27,7 @@ import type { MapPickTarget } from '../../components/MapDestinationContextMenu';
 
 import { ClienteMainView } from './components/ClienteMainView';
 import { ClienteSettingsView, type SettingsSection } from './components/ClienteSettingsView';
+import { ClienteHistoryView } from './components/ClienteHistoryView';
 import { Screen2MainView } from '../../components/Screen2MainView';
 import { MapDestinationContextMenu } from '../../components/MapDestinationContextMenu';
 import { DestinationAddressModal } from '../../components/DestinationAddressModal';
@@ -36,7 +37,7 @@ import { formatTrackingWhatsAppFooter, getClientTrackingUrl } from '../../utils/
 import { OrderChatWidget } from '../../components/chat/OrderChatWidget';
 import { CheckCircle } from 'lucide-react';
 
-type ClientViewMode = 'MAIN' | 'SETTINGS';
+type ClientViewMode = 'MAIN' | 'SETTINGS' | 'HISTORY';
 
 function resolveSavedOrigin(userId: string, point: LocationPoint | SavedAddress | null): SavedAddress | null {
   if (!point) return null;
@@ -328,6 +329,7 @@ export function ClienteDashboard() {
 
     const assignmentMode: OrderAssignmentMode = snapshotMotoboyId ? 'DIRECT' : 'BROADCAST';
     const clientePhone = checkout.trackingPhone.trim();
+    const clienteNome = checkout.recipientName.trim();
 
     let order;
     try {
@@ -341,6 +343,7 @@ export function ClienteDashboard() {
         price: snapshotPrice,
         tierLabel: snapshotTier?.label,
         trackingPhone: clientePhone,
+        recipientClientName: clienteNome,
         assignmentMode,
         targetMotoboyId: snapshotMotoboyId ?? undefined,
         polyline: snapshotRoute.polyline,
@@ -364,19 +367,17 @@ export function ClienteDashboard() {
 
     try {
       if (clientePhone) {
-        const isClientPaying =
-          checkout.paymentResponsibility === 'CLIENT' ||
-          checkout.paymentResponsibility === 'SPLIT';
+        const isClientPaying = checkout.paymentResponsibility === 'CLIENT';
 
         const paymentNotice = isClientPaying
-          ? `\n💳 *Pagamento por sua conta* — pague com PIX, cartão ou Bix Pay no link abaixo.\n`
+          ? `\n💳 *Pagamento por sua conta* — após a entrega, pague com PIX, cartão ou Bix Pay no link abaixo.\n`
           : checkout.establishmentPaid
             ? `\n✅ *Entrega já paga pelo estabelecimento.*\n`
             : '';
 
         await whatsappApi.enviarNotificacaoCliente(
           clientePhone,
-          'Cliente',
+          clienteNome || 'Cliente',
           `📦 *Seu pedido está pronto para entrega!*\n\n` +
             `Origem: ${snapshotRoute.origin.address}\n` +
             `Destino: ${snapshotRoute.destination.address}\n` +
@@ -509,6 +510,7 @@ export function ClienteDashboard() {
           userId={user.id}
           onUpdateOrigin={handleUpdateOrigin}
           onOpenSettings={() => handleOpenSettings('addresses')}
+          onOpenHistory={() => setViewMode('HISTORY')}
           destination={destination}
           onUpdateDestination={handleUpdateDestination}
           isDestinationModalOpen={isDestinationModalOpen}
@@ -538,6 +540,18 @@ export function ClienteDashboard() {
         />
       )}
 
+      {viewMode === 'HISTORY' && user && (
+        <ClienteHistoryView
+          userId={user.id}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          onLogout={handleLogout}
+          onBack={() => setViewMode('MAIN')}
+          userName={user.name}
+          userEmail={user.email}
+        />
+      )}
+
       {viewMode === 'SETTINGS' && user && (
         <ClienteSettingsView
           theme={theme}
@@ -564,7 +578,7 @@ export function ClienteDashboard() {
         />
       )}
 
-      {showRouteView && routeData && user && (
+      {showRouteView && viewMode === 'MAIN' && routeData && user && (
         <Screen2MainView
           routeData={routeData}
           origin={origin}

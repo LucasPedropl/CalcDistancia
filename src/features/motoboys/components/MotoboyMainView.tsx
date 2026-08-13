@@ -6,7 +6,7 @@ import { RouteMap } from '../../../components/RouteMap';
 import { MotoboyNotificationsBell } from './MotoboyNotificationsBell';
 import { AppViewport } from '../../../components/layout/AppViewport';
 import { ResponsiveMapShell } from '../../../components/layout/ResponsiveMapShell';
-import { Route, LogOut, Moon, Settings, Sun } from 'lucide-react';
+import { Route, History, LogOut, Moon, Settings, Sun } from 'lucide-react';
 
 interface MotoboyMainViewProps {
   openOrders: DeliveryOrder[];
@@ -23,6 +23,7 @@ interface MotoboyMainViewProps {
   onToggleTheme: () => void;
   onLogout: () => void;
   onOpenSettings: () => void;
+  onOpenHistory: () => void;
   userName?: string;
   motoboyId: string;
 }
@@ -42,6 +43,7 @@ export function MotoboyMainView({
   onToggleTheme,
   onLogout,
   onOpenSettings,
+  onOpenHistory,
   userName,
   motoboyId,
 }: MotoboyMainViewProps) {
@@ -75,6 +77,18 @@ export function MotoboyMainView({
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <MotoboyNotificationsBell motoboyId={motoboyId} />
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            className={`rounded-lg border p-2 transition-colors ${
+              isDark
+                ? 'border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-900'
+            }`}
+            title="Histórico de corridas"
+          >
+            <History className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={onOpenSettings}

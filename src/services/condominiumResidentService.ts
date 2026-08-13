@@ -38,6 +38,7 @@ export interface CreateResidentLinkInput {
   name: string;
   phone: string;
   unitLabel: string;
+  address?: string;
   documentNumber?: string;
 }
 
@@ -54,6 +55,7 @@ export function createResidentLink(input: CreateResidentLinkInput): ResidentLink
     name: input.name.trim(),
     phone: input.phone.trim(),
     unitLabel: input.unitLabel.trim(),
+    address: input.address?.trim() || undefined,
     documentNumber: input.documentNumber?.trim() || undefined,
     status: 'APPROVED',
     origin: 'MANUAL',
@@ -70,6 +72,7 @@ export interface RequestResidentLinkInput {
   name: string;
   phone: string;
   unitLabel?: string;
+  address?: string;
 }
 
 /**
@@ -82,7 +85,21 @@ export function requestResidentLinkFromOrder(
   if (!input.phone.trim()) return null;
 
   const existing = findResidentByPhone(input.condominiumId, input.phone);
-  if (existing) return existing;
+  if (existing) {
+    // A entrega costuma trazer o endereço completo que faltava no cadastro.
+    if (!existing.address && input.address?.trim()) {
+      return (
+        updateResidentDetails(existing.id, {
+          name: existing.name,
+          phone: existing.phone,
+          unitLabel: existing.unitLabel,
+          address: input.address,
+          documentNumber: existing.documentNumber,
+        }) ?? existing
+      );
+    }
+    return existing;
+  }
 
   const resident: ResidentLink = {
     id: generateEntityId('MOR'),
@@ -90,6 +107,7 @@ export function requestResidentLinkFromOrder(
     name: input.name.trim() || 'Morador não identificado',
     phone: input.phone.trim(),
     unitLabel: input.unitLabel?.trim() || 'Não informado',
+    address: input.address?.trim() || undefined,
     status: 'PENDING',
     origin: 'ORDER',
     requestedAt: new Date().toISOString(),
@@ -122,7 +140,10 @@ export function updateResidentStatus(
 
 export function updateResidentDetails(
   residentId: string,
-  details: Pick<CreateResidentLinkInput, 'name' | 'phone' | 'unitLabel' | 'documentNumber'>,
+  details: Pick<
+    CreateResidentLinkInput,
+    'name' | 'phone' | 'unitLabel' | 'address' | 'documentNumber'
+  >,
 ): ResidentLink | null {
   const residents = residentStore.readAll();
   const residentIndex = residents.findIndex((resident) => resident.id === residentId);
@@ -133,6 +154,7 @@ export function updateResidentDetails(
     name: details.name.trim(),
     phone: details.phone.trim(),
     unitLabel: details.unitLabel.trim(),
+    address: details.address?.trim() || undefined,
     documentNumber: details.documentNumber?.trim() || undefined,
   };
 

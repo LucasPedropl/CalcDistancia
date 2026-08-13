@@ -15,6 +15,7 @@ interface ClienteMainViewProps {
   userId: string;
   onUpdateOrigin: (address: SavedAddress | null) => void;
   onOpenSettings: () => void;
+  onOpenHistory: () => void;
   destination: LocationPoint | null;
   onUpdateDestination: (result: DestinationConfirmResult | null) => void;
   isDestinationModalOpen?: boolean;
@@ -48,6 +49,7 @@ export function ClienteMainView({
   userId,
   onUpdateOrigin,
   onOpenSettings,
+  onOpenHistory,
   destination,
   onUpdateDestination,
   isDestinationModalOpen,
@@ -79,6 +81,7 @@ export function ClienteMainView({
     <AppViewport theme={theme}>
       <HeaderNav
         onOpenSettings={onOpenSettings}
+        onOpenHistory={onOpenHistory}
         theme={theme}
         onToggleTheme={onToggleTheme}
         onLogout={onLogout}

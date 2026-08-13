@@ -34,6 +34,19 @@ export function ClienteTrackingSidebar({ order }: ClienteTrackingSidebarProps) {
             <h1 className="text-lg font-bold">Pedido {order.trackingCode}</h1>
           </div>
         </div>
+
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+            Código de confirmação da entrega
+          </p>
+          <p className="mt-1 font-mono text-2xl font-black tracking-widest text-slate-900">
+            {order.trackingCode}
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Informe este código ao motoboy no momento da entrega. É o mesmo código de rastreio —
+            sem ele a corrida não é finalizada.
+          </p>
+        </div>
       </div>
 
       <div className="flex-1 space-y-4 p-6">
@@ -73,6 +86,12 @@ export function ClienteTrackingSidebar({ order }: ClienteTrackingSidebarProps) {
             <p className="mt-3 flex items-center gap-2 text-sm font-medium text-emerald-700">
               <CheckCircle2 className="h-4 w-4" />
               Pedido entregue com sucesso!
+            </p>
+          )}
+
+          {order.status === 'COMPLETED' && !isOrderDeliveryPaid(order) && (
+            <p className="mt-2 text-sm text-slate-600">
+              Finalize o pagamento da entrega no centro da tela (PIX, cartão ou Bix Pay).
             </p>
           )}
 

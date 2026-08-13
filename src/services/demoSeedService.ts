@@ -73,6 +73,11 @@ const DEMO_RESIDENTS = [
 
 const DEMO_PENDING_RESIDENT = { name: 'Paulo Ribeiro', phone: '(27) 99903-5566' };
 
+/** O endereço do morador na demonstração é o próprio endereço do condomínio. */
+function buildResidentAddress(condominiumAddress: string, unitLabel?: string): string {
+  return unitLabel ? `${condominiumAddress} · ${unitLabel}` : condominiumAddress;
+}
+
 export interface DemoSeedResult {
   condominiumsCreated: number;
   residentsCreated: number;
@@ -122,12 +127,20 @@ export function seedDemoData(): DemoSeedResult {
 
     for (const resident of DEMO_RESIDENTS) {
       if (findResidentByPhone(userId, resident.phone)) continue;
-      createResidentLink({ condominiumId: userId, ...resident });
+      createResidentLink({
+        condominiumId: userId,
+        ...resident,
+        address: buildResidentAddress(seed.address, resident.unitLabel),
+      });
       residentsCreated += 1;
     }
 
     if (!findResidentByPhone(userId, DEMO_PENDING_RESIDENT.phone)) {
-      requestResidentLinkFromOrder({ condominiumId: userId, ...DEMO_PENDING_RESIDENT });
+      requestResidentLinkFromOrder({
+        condominiumId: userId,
+        ...DEMO_PENDING_RESIDENT,
+        address: buildResidentAddress(seed.address),
+      });
       residentsCreated += 1;
     }
 

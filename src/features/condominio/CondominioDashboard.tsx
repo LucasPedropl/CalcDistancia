@@ -12,6 +12,7 @@ import { CondominioDeliveriesPage } from './pages/CondominioDeliveriesPage';
 import { CondominioDocumentsPage } from './pages/CondominioDocumentsPage';
 import { CondominioResidentsPage } from './pages/CondominioResidentsPage';
 import { CondominioVisitsPage } from './pages/CondominioVisitsPage';
+import { CondominioHistoryPage } from './pages/CondominioHistoryPage';
 import { CondominioProfilePage } from './pages/CondominioProfilePage';
 
 export function CondominioDashboard() {
@@ -52,6 +53,7 @@ export function CondominioDashboard() {
         <Route path="documentos" element={<CondominioDocumentsPage profile={profile} />} />
         <Route path="moradores" element={<CondominioResidentsPage profile={profile} />} />
         <Route path="auditoria" element={<CondominioVisitsPage profile={profile} />} />
+        <Route path="historico" element={<CondominioHistoryPage profile={profile} />} />
         <Route path="perfil" element={<CondominioProfilePage profile={profile} />} />
         <Route path="*" element={<Navigate to="/condominio" replace />} />
       </Routes>

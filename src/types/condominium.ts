@@ -40,6 +40,8 @@ export interface ResidentLink {
   name: string;
   phone: string;
   unitLabel: string;
+  /** Endereço completo informado na entrega ou pelo cadastro da portaria */
+  address?: string;
   documentNumber?: string;
   status: ResidentLinkStatus;
   origin: ResidentLinkOrigin;

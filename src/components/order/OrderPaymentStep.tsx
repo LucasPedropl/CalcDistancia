@@ -1,8 +1,7 @@
-import { AlertCircle, Split, User, Wallet } from 'lucide-react';
+import { AlertCircle, User, Wallet } from 'lucide-react';
 import type { OrderPaymentMethod, OrderPaymentResponsibility } from '../../types/order';
 import type { ThemeMode } from '../../types';
 import { SimulatedCheckoutPayment } from '../payment/SimulatedCheckoutPayment';
-import { SplitPreviewCard } from './SplitPreviewCard';
 
 interface OrderPaymentStepProps {
   price: number | null;
@@ -18,7 +17,7 @@ const RESPONSIBILITY_OPTIONS = [
   {
     id: 'CLIENT' as const,
     label: 'Por conta do cliente',
-    description: 'Cliente paga via link de rastreamento (PIX, cartão ou Bix Pay).',
+    description: 'Cliente paga após a entrega via PIX, cartão ou Bix Pay.',
     icon: User,
   },
   {
@@ -26,12 +25,6 @@ const RESPONSIBILITY_OPTIONS = [
     label: 'Estabelecimento paga',
     description: 'Pague agora com PIX, cartão ou saldo Bix Pay.',
     icon: Wallet,
-  },
-  {
-    id: 'SPLIT' as const,
-    label: 'Dividido',
-    description: 'Cliente paga o motoboy e a plataforma retém a taxa.',
-    icon: Split,
   },
 ];
 
@@ -48,7 +41,7 @@ export function OrderPaymentStep({
 
   return (
     <div className="space-y-5 p-6">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="flex flex-col gap-2">
         {RESPONSIBILITY_OPTIONS.map(({ id, label, description, icon: Icon }) => {
           const isSelected = paymentResponsibility === id;
 
@@ -57,7 +50,7 @@ export function OrderPaymentStep({
               key={id}
               type="button"
               onClick={() => onResponsibilityChange(id)}
-              className={`rounded-xl border p-3 text-left transition-colors ${
+              className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
                 isSelected
                   ? isDark
                     ? 'border-white bg-white/10'
@@ -67,11 +60,29 @@ export function OrderPaymentStep({
                     : 'border-slate-200 bg-white'
               }`}
             >
-              <Icon className="mb-2 h-5 w-5" />
-              <p className="text-sm font-bold">{label}</p>
-              <p className={`mt-1 text-xs ${isDark ? 'text-zinc-400' : 'text-slate-600'}`}>
-                {description}
-              </p>
+              <span
+                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                  isSelected
+                    ? isDark
+                      ? 'bg-white/15 text-white'
+                      : 'bg-slate-900 text-white'
+                    : isDark
+                      ? 'bg-zinc-800 text-zinc-300'
+                      : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <p className="text-sm font-bold leading-snug">{label}</p>
+                <p
+                  className={`mt-0.5 text-xs leading-relaxed ${
+                    isDark ? 'text-zinc-400' : 'text-slate-600'
+                  }`}
+                >
+                  {description}
+                </p>
+              </span>
             </button>
           );
         })}
@@ -94,12 +105,10 @@ export function OrderPaymentStep({
               : 'border-slate-200 bg-slate-50 text-slate-700'
           }`}
         >
-          O cliente receberá no WhatsApp o link para pagar a entrega assim que o pedido for criado.
-          O motoboy verá que o pagamento é por conta do cliente.
+          Após a entrega, o cliente verá no rastreamento as opções de pagamento (PIX, cartão ou Bix
+          Pay) no centro da tela.
         </div>
       )}
-
-      {paymentResponsibility === 'SPLIT' && <SplitPreviewCard price={price} isDark={isDark} />}
 
       {paymentError && (
         <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Building2, ClipboardList, FileText, Package, Users } from 'lucide-react';
+import { Building2, ClipboardList, FileText, History, Package, Users } from 'lucide-react';
 
 interface CondominioTabBarProps {
   pendingResidentCount: number;
@@ -10,6 +10,7 @@ const TABS = [
   { to: '/condominio/documentos', label: 'Documentos', icon: FileText, end: false },
   { to: '/condominio/moradores', label: 'Moradores', icon: Users, end: false },
   { to: '/condominio/auditoria', label: 'Auditoria', icon: ClipboardList, end: false },
+  { to: '/condominio/historico', label: 'Histórico', icon: History, end: false },
   { to: '/condominio/perfil', label: 'Perfil', icon: Building2, end: false },
 ] as const;
 

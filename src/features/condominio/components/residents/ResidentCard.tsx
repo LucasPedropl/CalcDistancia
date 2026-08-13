@@ -1,4 +1,4 @@
-import { Check, Home, Pencil, Phone, RotateCcw, X } from 'lucide-react';
+import { Check, Home, MapPin, Pencil, Phone, RotateCcw, X } from 'lucide-react';
 import type { ResidentLink } from '../../../../types/condominium';
 
 interface ResidentCardProps {
@@ -38,6 +38,10 @@ export function ResidentCard({
               <Home className="h-3.5 w-3.5" />
               {resident.unitLabel}
             </span>
+          </p>
+          <p className="mt-1 flex items-start gap-1 text-xs text-slate-500">
+            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{resident.address ?? 'Endereço não informado'}</span>
           </p>
           <p className="mt-1 text-[11px] text-slate-400">
             {ORIGIN_LABELS[resident.origin]} ·{' '}

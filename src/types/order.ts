@@ -4,10 +4,12 @@ import type { ResidentAuthorizationStatus } from './condominium';
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PICKED_UP' | 'CANCELLED' | 'COMPLETED';
 export type OrderAssignmentMode = 'BROADCAST' | 'DIRECT';
 export type OrderPaymentStatus = 'NONE' | 'PENDING' | 'PAID';
-export type OrderPaymentResponsibility = 'CLIENT' | 'ESTABLISHMENT' | 'SPLIT';
-export type OrderPaymentMethod = 'PIX' | 'CARD' | 'BIXPAY';
+export type OrderPaymentResponsibility = 'CLIENT' | 'ESTABLISHMENT';
+export type OrderPaymentMethod = 'PIX' | 'CARD' | 'BIXPAY' | 'OFFLINE';
 
 export interface OrderCheckoutResult {
+  /** Nome de quem recebe, exibido ao motoboy e à portaria do condomínio */
+  recipientName: string;
   trackingPhone: string;
   paymentResponsibility: OrderPaymentResponsibility;
   establishmentPaid: boolean;

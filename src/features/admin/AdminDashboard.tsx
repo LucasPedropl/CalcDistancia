@@ -6,6 +6,7 @@ import { AppViewport } from '../../components/layout/AppViewport';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AdminOverviewPage } from './pages/AdminOverviewPage';
 import { AdminCondominiumsPage } from './pages/AdminCondominiumsPage';
+import { AdminOrdersPage } from './pages/AdminOrdersPage';
 import { AdminPlansPage } from './pages/AdminPlansPage';
 import { AdminPaymentsPage } from './pages/AdminPaymentsPage';
 import { AdminContractsPage } from './pages/AdminContractsPage';
@@ -64,6 +65,7 @@ export function AdminDashboard() {
 
         <Routes>
           <Route index element={<AdminOverviewPage />} />
+          <Route path="corridas" element={<AdminOrdersPage />} />
           <Route path="condominios" element={<AdminCondominiumsPage />} />
           <Route path="planos" element={<AdminPlansPage />} />
           <Route path="pagamentos" element={<AdminPaymentsPage />} />

@@ -64,6 +64,7 @@ export function resolveOrderCondominiumLink(
     condominiumId: profile.userId,
     name: input.recipientName ?? 'Morador não identificado',
     phone: input.recipientPhone ?? '',
+    address: input.destination.address,
   });
 
   return {

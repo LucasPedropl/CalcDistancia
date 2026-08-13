@@ -7,7 +7,7 @@ import type {
   OrderPaymentMethod,
   OrderPaymentResponsibility,
 } from '../types/order';
-import { isValidPhone } from '../utils/phoneValidation';
+import { isValidPhone, formatPhoneMask } from '../utils/phoneValidation';
 import { OrderReviewStep } from './order/OrderReviewStep';
 import { OrderPhoneStep } from './order/OrderPhoneStep';
 import { OrderPaymentStep } from './order/OrderPaymentStep';
@@ -31,7 +31,7 @@ interface OrderModalProps {
 
 const STEP_LABELS: Record<OrderModalStep, string> = {
   REVIEW: 'Passo 1 de 3 — Revise os dados',
-  PHONE: 'Passo 2 de 3 — WhatsApp do cliente',
+  PHONE: 'Passo 2 de 3 — Dados do cliente',
   PAYMENT: 'Passo 3 de 3 — Pagamento da entrega',
 };
 
@@ -51,8 +51,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 }: OrderModalProps) => {
   const isDark = theme === 'dark';
   const [step, setStep] = React.useState<OrderModalStep>('REVIEW');
-  const [phone, setPhone] = React.useState('');
-  const [phoneError, setPhoneError] = React.useState<string | null>(null);
+  const [recipientName, setRecipientName] = React.useState('');
+  const [phone, setPhone] = React.useState(() => formatPhoneMask('27988800844'));
+  const [recipientError, setRecipientError] = React.useState<string | null>(null);
   const [paymentResponsibility, setPaymentResponsibility] =
     React.useState<OrderPaymentResponsibility>('CLIENT');
   const [establishmentPaid, setEstablishmentPaid] = React.useState(false);
@@ -63,8 +64,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   const resetState = React.useCallback(() => {
     setStep('REVIEW');
-    setPhone('');
-    setPhoneError(null);
+    setRecipientName('');
+    setPhone(formatPhoneMask('27988800844'));
+    setRecipientError(null);
     setPaymentResponsibility('CLIENT');
     setEstablishmentPaid(false);
     setEstablishmentPaymentMethod(undefined);
@@ -84,9 +86,21 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     onClose();
   };
 
-  const handleConfirm = () => {
+  /** Valida os dados do cliente e devolve a mensagem de erro, se houver. */
+  const validateRecipient = (): string | null => {
+    if (recipientName.trim().length < 3) {
+      return 'Informe o nome de quem vai receber a entrega.';
+    }
     if (!isValidPhone(phone)) {
-      setPaymentError('Informe um telefone válido do cliente antes de confirmar.');
+      return 'Informe um telefone válido para receber notificações via WhatsApp.';
+    }
+    return null;
+  };
+
+  const handleConfirm = () => {
+    const recipientValidationError = validateRecipient();
+    if (recipientValidationError) {
+      setRecipientError(recipientValidationError);
       setStep('PHONE');
       return;
     }
@@ -97,6 +111,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
 
     onConfirmSuccess({
+      recipientName: recipientName.trim(),
       trackingPhone: phone,
       paymentResponsibility,
       establishmentPaid: paymentResponsibility === 'ESTABLISHMENT' && establishmentPaid,
@@ -111,8 +126,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       return;
     }
 
-    if (!isValidPhone(phone)) {
-      setPhoneError('Informe um telefone válido para receber notificações via WhatsApp.');
+    const recipientValidationError = validateRecipient();
+    if (recipientValidationError) {
+      setRecipientError(recipientValidationError);
       return;
     }
     setStep('PAYMENT');
@@ -146,12 +162,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
         {step === 'PHONE' && (
           <OrderPhoneStep
+            recipientName={recipientName}
             phone={phone}
-            phoneError={phoneError}
+            recipientError={recipientError}
             isDark={isDark}
+            onRecipientNameChange={(value) => {
+              setRecipientName(value);
+              setRecipientError(null);
+            }}
             onPhoneChange={(value) => {
               setPhone(value);
-              setPhoneError(null);
+              setRecipientError(null);
             }}
           />
         )}

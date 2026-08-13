@@ -18,6 +18,7 @@ export function ResidentFormModal({ condominiumId, resident, onClose }: Resident
   const [name, setName] = useState(resident?.name ?? '');
   const [phone, setPhone] = useState(resident?.phone ?? '');
   const [unitLabel, setUnitLabel] = useState(resident?.unitLabel ?? '');
+  const [address, setAddress] = useState(resident?.address ?? '');
   const [documentNumber, setDocumentNumber] = useState(resident?.documentNumber ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -42,9 +43,9 @@ export function ResidentFormModal({ condominiumId, resident, onClose }: Resident
     setIsSaving(true);
     try {
       if (resident) {
-        updateResidentDetails(resident.id, { name, phone, unitLabel, documentNumber });
+        updateResidentDetails(resident.id, { name, phone, unitLabel, address, documentNumber });
       } else {
-        createResidentLink({ condominiumId, name, phone, unitLabel, documentNumber });
+        createResidentLink({ condominiumId, name, phone, unitLabel, address, documentNumber });
       }
       onClose();
     } catch (saveError) {
@@ -137,6 +138,22 @@ export function ResidentFormModal({ condominiumId, resident, onClose }: Resident
               />
             </label>
           </div>
+
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+              Endereço completo
+            </span>
+            <input
+              type="text"
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              placeholder="Rua, número, bairro, cidade"
+              className={inputClass}
+            />
+            <span className="mt-1 block text-[11px] text-slate-500">
+              Usado para conferir se a entrega é realmente para este morador.
+            </span>
+          </label>
 
           {error && (
             <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

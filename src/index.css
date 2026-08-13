@@ -66,8 +66,13 @@ body,
 }
 
 /* Custom Leaflet Map styling overrides */
+/* Os panes internos do Leaflet usam z-index de 400 a 800, que vazavam por cima
+   de headers, menus e modais da aplicação. Isolar o container confina esses
+   valores ao mapa, que passa a competir como um único elemento em z-index 0. */
 .leaflet-container {
   font-family: var(--font-sans);
+  isolation: isolate;
+  z-index: 0;
 }
 
 .leaflet-popup-content-wrapper {

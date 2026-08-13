@@ -57,6 +57,7 @@ export function OrderPixPaymentButton({
         onClose={() => setIsOpen(false)}
         theme={theme}
         payerLabel={payerLabel}
+        guestBixPay={variant === 'tracking' || variant === 'motoboy'}
       />
     </>
   );
