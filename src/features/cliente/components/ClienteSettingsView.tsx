@@ -6,9 +6,11 @@ import { AppViewport } from '../../../components/layout/AppViewport';
 import { UserSettingsPanel } from './UserSettingsPanel';
 import { AddressSettingsPanel } from './AddressSettingsPanel';
 import { PriceConfigModal } from '../../../components/PriceConfigModal';
-import { ArrowLeft, MapPin, Settings, User, DollarSign } from 'lucide-react';
+import { BixPayCredentialsForm } from '../../../components/payment/BixPayCredentialsForm';
+import { LedgerStatementPanel } from '../../../components/payment/LedgerStatementPanel';
+import { ArrowLeft, MapPin, Settings, User, DollarSign, Wallet } from 'lucide-react';
 
-export type SettingsSection = 'profile' | 'addresses' | 'pricing';
+export type SettingsSection = 'profile' | 'addresses' | 'pricing' | 'payments';
 
 interface ClienteSettingsViewProps {
   theme: ThemeMode;
@@ -28,6 +30,7 @@ interface ClienteSettingsViewProps {
 const SECTIONS: { id: SettingsSection; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Conta', icon: User },
   { id: 'addresses', label: 'Endereços', icon: MapPin },
+  { id: 'payments', label: 'Bix Pay', icon: Wallet },
 ];
 
 export function ClienteSettingsView({
@@ -126,6 +129,20 @@ export function ClienteSettingsView({
                 theme={theme}
                 onAddressesChange={onAddressesChange}
               />
+            )}
+            {activeSection === 'payments' && (
+              <div className="space-y-5">
+                <BixPayCredentialsForm
+                  scope="ESTABLISHMENT"
+                  ownerId={userId}
+                  description="Conta Bix Pay usada para pagar as entregas do estabelecimento direto no checkout."
+                />
+                <LedgerStatementPanel
+                  ownerType="ESTABLISHMENT"
+                  ownerId={userId}
+                  title="Caderneta do estabelecimento"
+                />
+              </div>
             )}
             {activeSection === 'pricing' && canEditPriceTable && (
               <div className="space-y-4">

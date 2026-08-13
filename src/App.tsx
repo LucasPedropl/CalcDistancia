@@ -10,6 +10,7 @@ import { AdminLogin } from './features/admin/components/AdminLogin';
 import { ClienteOrderTrackingPage } from './features/clientes/ClienteOrderTrackingPage';
 import { ClienteTrackingEntryPage } from './features/clientes/ClienteTrackingEntryPage';
 import { CondominioDashboard } from './features/condominio/CondominioDashboard';
+import { ContractAcceptanceGate } from './components/contract/ContractAcceptanceGate';
 
 const ProtectedRoute = ({
   children,
@@ -53,7 +54,7 @@ const ProtectedRoute = ({
     return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return <ContractAcceptanceGate>{children}</ContractAcceptanceGate>;
 };
 
 export const App = () => {

@@ -1,4 +1,4 @@
-import type { DeliveryOrder } from '../types/order';
+import type { DeliveryOrder, OrderPaymentMethod } from '../types/order';
 
 export function resolvePaymentResponsibility(
   order: DeliveryOrder,
@@ -6,19 +6,29 @@ export function resolvePaymentResponsibility(
   return order.paymentResponsibility ?? 'CLIENT';
 }
 
+export const ORDER_PAYMENT_METHOD_LABELS: Record<OrderPaymentMethod, string> = {
+  PIX: 'PIX',
+  CARD: 'Cartão',
+  BIXPAY: 'Bix Pay',
+};
+
 export function isOrderDeliveryPaid(order: DeliveryOrder): boolean {
   return order.paymentStatus === 'PAID';
 }
 
 export function getOrderPaymentStatusLabel(order: DeliveryOrder): string {
   if (isOrderDeliveryPaid(order)) {
-    return resolvePaymentResponsibility(order) === 'ESTABLISHMENT'
-      ? 'Pago pelo estabelecimento'
-      : 'Pagamento confirmado';
+    const method = order.paymentMethod ? ` · ${ORDER_PAYMENT_METHOD_LABELS[order.paymentMethod]}` : '';
+
+    if (resolvePaymentResponsibility(order) === 'ESTABLISHMENT') {
+      return `Pago pelo estabelecimento${method}`;
+    }
+    return `Pagamento confirmado${method}`;
   }
 
   const responsibility = resolvePaymentResponsibility(order);
   if (responsibility === 'CLIENT') return 'Cliente paga na entrega';
+  if (responsibility === 'SPLIT') return 'Pagamento dividido na entrega';
   return 'Aguardando pagamento';
 }
 
@@ -29,16 +39,22 @@ export function getOrderPaymentStatusTone(
   return resolvePaymentResponsibility(order) === 'ESTABLISHMENT' ? 'warning' : 'info';
 }
 
+/** Responsabilidades em que o pagamento é cobrado do cliente na entrega. */
+function isClientPaidOnDelivery(order: DeliveryOrder): boolean {
+  const responsibility = resolvePaymentResponsibility(order);
+  return responsibility === 'CLIENT' || responsibility === 'SPLIT';
+}
+
 export function canShowClientTrackingPayment(order: DeliveryOrder | null | undefined): boolean {
   if (!order || order.status === 'CANCELLED' || order.status === 'COMPLETED') return false;
   if (isOrderDeliveryPaid(order)) return false;
-  return resolvePaymentResponsibility(order) === 'CLIENT';
+  return isClientPaidOnDelivery(order);
 }
 
 export function canShowMotoboyDestinationPix(order: DeliveryOrder | null | undefined): boolean {
   if (!order) return false;
   if (isOrderDeliveryPaid(order)) return false;
-  if (resolvePaymentResponsibility(order) !== 'CLIENT') return false;
+  if (!isClientPaidOnDelivery(order)) return false;
   return order.status === 'PICKED_UP';
 }
 

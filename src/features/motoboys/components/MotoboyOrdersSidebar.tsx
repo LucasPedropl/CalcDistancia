@@ -4,8 +4,9 @@ import type { ThemeMode } from '../../../types';
 import { formatCurrency } from '../../../services/pricingService';
 import { formatDurationMinutes } from '../../../utils/formatDuration';
 import { Search, Package, MapPin, CheckCircle, Clock, Navigation, Map, X, XCircle, Flag } from 'lucide-react';
-import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentModal';
+import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentButton';
 import { OrderPaymentStatusBadge } from '../../../components/payment/OrderPaymentStatusBadge';
+import { MotoboyCondominiumAccessCard } from './MotoboyCondominiumAccessCard';
 
 interface MotoboyOrdersSidebarProps {
   openOrders: DeliveryOrder[];
@@ -81,6 +82,8 @@ function OrderCardDetails({
           <Clock className="h-3 w-3" />~{formatDurationMinutes(order.durationMin)}
         </span>
       </div>
+
+      <MotoboyCondominiumAccessCard order={order} isDark={isDark} />
 
       <div className="mt-3">
         <OrderPaymentStatusBadge order={order} />

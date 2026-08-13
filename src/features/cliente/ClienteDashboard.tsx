@@ -364,12 +364,15 @@ export function ClienteDashboard() {
 
     try {
       if (clientePhone) {
-        const paymentNotice =
-          checkout.paymentResponsibility === 'CLIENT'
-            ? `\n💳 *Pagamento por sua conta* — pague com PIX ou cartão no link abaixo.\n`
-            : checkout.establishmentPaid
-              ? `\n✅ *Entrega já paga pelo estabelecimento.*\n`
-              : '';
+        const isClientPaying =
+          checkout.paymentResponsibility === 'CLIENT' ||
+          checkout.paymentResponsibility === 'SPLIT';
+
+        const paymentNotice = isClientPaying
+          ? `\n💳 *Pagamento por sua conta* — pague com PIX, cartão ou Bix Pay no link abaixo.\n`
+          : checkout.establishmentPaid
+            ? `\n✅ *Entrega já paga pelo estabelecimento.*\n`
+            : '';
 
         await whatsappApi.enviarNotificacaoCliente(
           clientePhone,
@@ -382,9 +385,7 @@ export function ClienteDashboard() {
             paymentNotice +
             `\nAguardando um motoboy aceitar a corrida.\n\n` +
             formatTrackingWhatsAppFooter(order.trackingCode) +
-            (checkout.paymentResponsibility === 'CLIENT'
-              ? `\n\n💰 Pague a entrega aqui:\n${trackingUrl}`
-              : ''),
+            (isClientPaying ? `\n\n💰 Pague a entrega aqui:\n${trackingUrl}` : ''),
         );
       }
 
@@ -629,6 +630,7 @@ export function ClienteDashboard() {
         tier={orderTier}
         assignmentMode={selectedMotoboyId ? 'DIRECT' : 'BROADCAST'}
         targetMotoboyName={selectedMotoboy?.name}
+        establishmentId={user?.id ?? ''}
         onConfirmSuccess={handleOrderSuccess}
         theme={theme}
       />

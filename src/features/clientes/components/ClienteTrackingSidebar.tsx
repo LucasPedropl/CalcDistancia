@@ -3,7 +3,7 @@ import { Package, MapPin, Bike, Clock, CheckCircle2 } from 'lucide-react';
 import type { DeliveryOrder } from '../../../types/order';
 import { formatDurationMinutes } from '../../../utils/formatDuration';
 import { formatCurrency } from '../../../services/pricingService';
-import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentModal';
+import { OrderPixPaymentButton } from '../../../components/payment/OrderPixPaymentButton';
 import { OrderPaymentStatusBadge } from '../../../components/payment/OrderPaymentStatusBadge';
 import { isOrderDeliveryPaid } from '../../../utils/orderPaymentDisplay';
 

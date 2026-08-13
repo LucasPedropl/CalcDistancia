@@ -1,10 +1,11 @@
 import type { LocationPoint } from '../types';
+import type { ResidentAuthorizationStatus } from './condominium';
 
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PICKED_UP' | 'CANCELLED' | 'COMPLETED';
 export type OrderAssignmentMode = 'BROADCAST' | 'DIRECT';
 export type OrderPaymentStatus = 'NONE' | 'PENDING' | 'PAID';
-export type OrderPaymentResponsibility = 'CLIENT' | 'ESTABLISHMENT';
-export type OrderPaymentMethod = 'PIX' | 'CARD';
+export type OrderPaymentResponsibility = 'CLIENT' | 'ESTABLISHMENT' | 'SPLIT';
+export type OrderPaymentMethod = 'PIX' | 'CARD' | 'BIXPAY';
 
 export interface OrderCheckoutResult {
   trackingPhone: string;
@@ -25,6 +26,10 @@ export interface DeliveryOrder {
   /** Condomínio de destino, quando aplicável */
   condominiumId?: string;
   condominiumName?: string;
+  /** Bloco/apartamento informado pelo cadastro do morador */
+  condominiumUnitLabel?: string;
+  /** Define se o motoboy entra pela autorização do morador ou pela portaria */
+  residentAuthorizationStatus?: ResidentAuthorizationStatus;
   origin: LocationPoint;
   destination: LocationPoint;
   distanceKm: number;

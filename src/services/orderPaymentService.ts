@@ -5,7 +5,7 @@ import {
   getOrderById,
   markOrderPaymentPaid,
 } from './orderService';
-import type { DeliveryOrder } from '../types/order';
+import type { DeliveryOrder, OrderPaymentMethod } from '../types/order';
 import {
   canShowClientTrackingPayment,
   canShowEstablishmentOrderPayment,
@@ -59,9 +59,12 @@ export async function ensureOrderPixPayment(order: DeliveryOrder): Promise<Deliv
   return updated ?? { ...order, pixEmv: pix.pixCopiaECola, paymentStatus: 'PENDING' };
 }
 
-export function simulateOrderPixPaymentConfirmed(orderId: string): DeliveryOrder | null {
+export function simulateOrderPixPaymentConfirmed(
+  orderId: string,
+  paymentMethod: OrderPaymentMethod = 'PIX',
+): DeliveryOrder | null {
   markPaymentPaid(orderId);
-  return markOrderPaymentPaid(orderId);
+  return markOrderPaymentPaid(orderId, paymentMethod);
 }
 
 export function canShowOrderPixPayment(

@@ -10,7 +10,7 @@ import { AvailableMotoboysList } from './AvailableMotoboysList';
 import { formatCurrency, getPriceForDistance, getTierForDistance } from '../services/pricingService';
 import { formatDurationMinutes } from '../utils/formatDuration';
 import { ChevronRight, Clock, Navigation, DollarSign, Bike, Globe, Loader2, CheckCircle, XCircle, Zap } from 'lucide-react';
-import { OrderPixPaymentButton } from './payment/OrderPixPaymentModal';
+import { OrderPixPaymentButton } from './payment/OrderPixPaymentButton';
 import { OrderPaymentStatusBadge } from './payment/OrderPaymentStatusBadge';
 
 interface SidebarMenuProps {

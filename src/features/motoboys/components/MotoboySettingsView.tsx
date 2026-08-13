@@ -13,9 +13,11 @@ import {
   loadMotoboyProfile,
   saveMotoboyProfile,
 } from '../../../services/motoboyProfileService';
-import { ArrowLeft, DollarSign, Settings, User } from 'lucide-react';
+import { BixPayCredentialsForm } from '../../../components/payment/BixPayCredentialsForm';
+import { LedgerStatementPanel } from '../../../components/payment/LedgerStatementPanel';
+import { ArrowLeft, DollarSign, Settings, User, Wallet } from 'lucide-react';
 
-export type MotoboySettingsSection = 'profile' | 'pricing';
+export type MotoboySettingsSection = 'profile' | 'pricing' | 'payments';
 
 interface MotoboySettingsViewProps {
   theme: ThemeMode;
@@ -30,6 +32,7 @@ interface MotoboySettingsViewProps {
 const SECTIONS: { id: MotoboySettingsSection; label: string; icon: typeof User }[] = [
   { id: 'profile', label: 'Perfil', icon: User },
   { id: 'pricing', label: 'Preços', icon: DollarSign },
+  { id: 'payments', label: 'Bix Pay', icon: Wallet },
 ];
 
 export function MotoboySettingsView({
@@ -125,6 +128,20 @@ export function MotoboySettingsView({
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-2xl p-4 sm:p-6 lg:p-8">
             {activeSection === 'profile' && <MotoboyForm theme={theme} />}
+            {activeSection === 'payments' && (
+              <div className="space-y-5">
+                <BixPayCredentialsForm
+                  scope="MOTOBOY"
+                  ownerId={motoboyId}
+                  description="Conta Bix Pay que recebe o valor das corridas quando o cliente paga na entrega."
+                />
+                <LedgerStatementPanel
+                  ownerType="MOTOBOY"
+                  ownerId={motoboyId}
+                  title="Minha caderneta"
+                />
+              </div>
+            )}
             {activeSection === 'pricing' && (
               <div className="space-y-4">
                 <div>

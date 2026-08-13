@@ -11,8 +11,12 @@ import { DEFAULT_MOTOBOY_RADIUS_KM, loadMotoboyProfile } from './motoboyProfileS
 import { calculateHaversineDistanceKm } from '../utils/distance';
 import { isOrderReachableForMotoboy } from '../utils/orderReachability';
 import { findClientIdByPhone, phonesMatch } from './clientProfileService';
-import { findCondominiumAtDestination, loadCondominiumProfile } from './condominiumService';
 import { resetMotoboySimulation } from './motoboySimulationService';
+import {
+  registerOrderCondominiumVisit,
+  resolveOrderCondominiumLink,
+} from './orderCondominiumLink';
+import { recordOrderPaymentEntries } from './ledgerService';
 
 const ORDERS_STORAGE_KEY = 'calc_distancia_orders';
 const ORDERS_UPDATED_EVENT = 'calc-distancia-orders-updated';
@@ -86,32 +90,24 @@ export function createOrder(input: CreateOrderInput): DeliveryOrder {
     input.recipientClientId ??
     (input.trackingPhone ? findClientIdByPhone(input.trackingPhone) : undefined);
 
-  let condominiumId: string | undefined;
-  let condominiumName: string | undefined;
-
-  if (input.condominiumId === null) {
-    condominiumId = undefined;
-    condominiumName = undefined;
-  } else if (input.condominiumId) {
-    const profile = loadCondominiumProfile(input.condominiumId);
-    condominiumId = input.condominiumId;
-    condominiumName = input.condominiumName ?? profile?.name;
-  } else {
-    const auto = findCondominiumAtDestination(input.destination);
-    condominiumId = auto?.userId;
-    condominiumName = auto?.name;
-  }
+  const condominiumLink = resolveOrderCondominiumLink({
+    destination: input.destination,
+    condominiumId: input.condominiumId,
+    condominiumName: input.condominiumName,
+    recipientName: input.recipientClientName,
+    recipientPhone: input.trackingPhone,
+  });
 
   const orders = loadOrdersFromStorage();
 
   const paymentResponsibility = input.paymentResponsibility ?? 'CLIENT';
   const establishmentPaid = Boolean(input.establishmentPaid);
   const paymentStatus: OrderPaymentStatus =
-    paymentResponsibility === 'ESTABLISHMENT' && establishmentPaid
-      ? 'PAID'
-      : paymentResponsibility === 'CLIENT'
-        ? 'PENDING'
-        : 'NONE';
+    paymentResponsibility === 'ESTABLISHMENT'
+      ? establishmentPaid
+        ? 'PAID'
+        : 'NONE'
+      : 'PENDING';
 
   const order: DeliveryOrder = {
     id: generateOrderId(),
@@ -120,8 +116,10 @@ export function createOrder(input: CreateOrderInput): DeliveryOrder {
     recipientClientId,
     recipientClientName: input.recipientClientName ?? 'Cliente',
     recipientClientPhone: input.trackingPhone,
-    condominiumId,
-    condominiumName,
+    condominiumId: condominiumLink.condominiumId,
+    condominiumName: condominiumLink.condominiumName,
+    condominiumUnitLabel: condominiumLink.condominiumUnitLabel,
+    residentAuthorizationStatus: condominiumLink.residentAuthorizationStatus,
     origin: input.origin,
     destination: input.destination,
     distanceKm: input.distanceKm,
@@ -348,7 +346,10 @@ export function attachPixPaymentToOrder(
   return updatedOrder;
 }
 
-export function markOrderPaymentPaid(orderId: string): DeliveryOrder | null {
+export function markOrderPaymentPaid(
+  orderId: string,
+  paymentMethod?: OrderPaymentMethod,
+): DeliveryOrder | null {
   const orders = loadOrdersFromStorage();
   const orderIndex = orders.findIndex((order) => order.id === orderId);
   if (orderIndex === -1) return null;
@@ -356,11 +357,13 @@ export function markOrderPaymentPaid(orderId: string): DeliveryOrder | null {
   const updatedOrder: DeliveryOrder = {
     ...orders[orderIndex],
     paymentStatus: 'PAID' as OrderPaymentStatus,
+    paymentMethod: paymentMethod ?? orders[orderIndex].paymentMethod,
     paidAt: new Date().toISOString(),
   };
 
   orders[orderIndex] = updatedOrder;
   saveOrdersToStorage(orders);
+  recordOrderPaymentEntries(updatedOrder);
   return updatedOrder;
 }
 
@@ -383,6 +386,7 @@ export function completeOrder(orderId: string, motoboyId: string): DeliveryOrder
   saveOrdersToStorage(orders);
   updateMotoboyStatus(motoboyId, 'ONLINE');
   resetMotoboySimulation(motoboyId);
+  registerOrderCondominiumVisit(updatedOrder);
   return updatedOrder;
 }
 
