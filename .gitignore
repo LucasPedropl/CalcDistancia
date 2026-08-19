@@ -15,6 +15,10 @@ dist-ssr
 !.env.example
 *.local
 
+# Backend WebMotos — repositorio git independente (webmotos-api).
+# Vive dentro desta pasta por conveniencia de dev, mas NAO pertence a este repo.
+/api/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
