@@ -19,6 +19,10 @@ dist-ssr
 # Vive dentro desta pasta por conveniencia de dev, mas NAO pertence a este repo.
 /api/
 
+# Front novo — repositorio git independente (webmotos-web).
+# Este repo aqui e o prototipo antigo, mantido como referencia ate a paridade.
+/web/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
